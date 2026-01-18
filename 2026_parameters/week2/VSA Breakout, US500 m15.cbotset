@@ -1,0 +1,27 @@
+﻿{
+  "Chart": {
+    "Symbol": "US500",
+    "Period": "m15"
+  },
+  "Parameters": {
+    "FullName": "Furiere_VsaBreakoutPro",
+    "FromHour": 13.0,
+    "ToTradeHour": 17.0,
+    "ToHour": 22.0,
+    "StartHour": 14,
+    "EndHour": 15,
+    "VolMultiplier": 0.3,
+    "MaxTakeProfitPips": 150.0,
+    "MinTakeProfitPips": 30.0,
+    "MinQuantity": 1.0,
+    "MaxQuantity": 3.0,
+    "MinMarginLevel": 170.0,
+    "UseMarginToLotSize": true,
+    "MarginLotDivider": 700.0,
+    "TakeProfitEod": true,
+    "CloseOnBar": true,
+    "CloseOnBarPostionAge": 90,
+    "CloseOldIfProfit": true,
+    "MinProfit": 100.0
+  }
+}
