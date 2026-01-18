@@ -106,12 +106,7 @@ namespace cAlgo.Robots
     #endregion
 
     #region Risk Management
-
-    [Parameter("Stop Loss", Group = "Stop Loss", DefaultValue = false)]
-    public bool UseStopLoss { get; set; }
-
-    [Parameter("Stop Loss (pips)", Group = "Stop Loss", MinValue = 0, DefaultValue = 100)]
-    public double StopLoss { get; set; }
+    
 
     [Parameter("Max Take Profit (pips)", Group = "Take Profit", MinValue = 0, DefaultValue = 30, Step = 10)]
     public double MaxTakeProfitPips { get; set; }
@@ -358,14 +353,14 @@ namespace cAlgo.Robots
           PlaceStopOrder(direction.trade.Value,
             SymbolName, vol, targetPrice,
             FullName,
-            UseStopLoss ? StopLoss : null,
+            null,
             tp, ProtectionType.Relative, expiration);
           break;
         case  TradeType.Buy when direction.predictiontype == Helpers.PredictionTypeEnum.Bounce && targetPrice < Symbol.Bid:
           PlaceLimitOrder(TradeType.Buy,
             SymbolName, vol, targetPrice,
             FullName,
-            UseStopLoss ? StopLoss : null,
+            null,
             tp, ProtectionType.Relative, expiration);
           break;
       }
