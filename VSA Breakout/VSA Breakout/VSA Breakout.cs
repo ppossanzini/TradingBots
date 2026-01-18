@@ -8,13 +8,15 @@ namespace cAlgo.Robots
   [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.None)]
   public class VsaBreakoutPro : Robot
   {
-
     [Parameter("Full Name", Group = "General", DefaultValue = "Furiere_VsaBreakoutPro")]
     public string FullName { get; set; }
 
 
     [Parameter("From the hour", Group = "Trading Moment", MinValue = 0, DefaultValue = 7, MaxValue = 24, Step = 0.01)]
     public double FromHour { get; set; }
+
+    [Parameter("To trade hour", Group = "Trading Moment", MinValue = 0, DefaultValue = 17, MaxValue = 24, Step = 0.01)]
+    public double ToTradeHour { get; set; }
 
     [Parameter("End of day hour", Group = "Trading Moment", MinValue = 0, DefaultValue = 17, MaxValue = 24, Step = 0.01)]
     public double ToHour { get; set; }
@@ -25,7 +27,7 @@ namespace cAlgo.Robots
     [Parameter("End Hour (UTC)", DefaultValue = 15)]
     public int EndHour { get; set; }
 
-    [Parameter("Volume Multiplier", DefaultValue = 1.5, MinValue = 1.0)]
+    [Parameter("Volume Multiplier", DefaultValue = 1.5, MinValue = 0.3)]
     public double VolMultiplier { get; set; }
 
     [Parameter("Max Take Profit (pips)", Group = "Take Profit", MinValue = 0, DefaultValue = 30, Step = 10)]
@@ -74,6 +76,7 @@ namespace cAlgo.Robots
     #endregion
 
     private bool IsMarketTime => Server.Time.Hour >= FromHour && Server.Time.Hour <= ToHour;
+    private bool IsTradeTime => Server.Time.Hour >= FromHour && Server.Time.Hour <= ToTradeHour;
 
 
     private double _sessionHigh;
@@ -101,10 +104,12 @@ namespace cAlgo.Robots
       }
 
       // 2. Fase di monitoraggio Breakout (dopo le 15:00 UTC)
-      if (currentTime > end && _isMonitoring)
+      if (currentTime > end && _isMonitoring && IsTradeTime)
       {
         CheckForVsaBreakout();
       }
+
+      if (!IsMarketTime) _isMonitoring = false;
     }
 
     private void CheckForVsaBreakout()
