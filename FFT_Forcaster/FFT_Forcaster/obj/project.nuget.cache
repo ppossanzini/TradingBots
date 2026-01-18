@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "vMGUYnEaqMGaTQ1Axt2Bw5iYa9uhkqNHJLVxretsFUvGlZ6Z17cudVP2B6z9xdRp5M1BgcnPuyLf9Q5v+JzTiw==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Paolo\\Documents\\cAlgo\\Sources\\Robots\\FFT_Forcaster\\FFT_Forcaster\\FFT_Forcaster.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Paolo\\.nuget\\packages\\ctrader.automate\\1.0.14\\ctrader.automate.1.0.14.nupkg.sha512",
+    "C:\\Users\\Paolo\\.nuget\\packages\\mathnet.numerics\\5.0.0\\mathnet.numerics.5.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}

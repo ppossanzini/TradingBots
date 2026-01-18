@@ -1,0 +1,5 @@
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\FFT_Forcaster\FFT_Forcaster\bin\Release\net6.0\publish\FFT_Forcaster.dll
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\FFT_Forcaster\FFT_Forcaster\bin\Release\net6.0\publish\FFT_Forcaster.deps.json
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\FFT_Forcaster\FFT_Forcaster\bin\Release\net6.0\publish\FFT_Forcaster.pdb
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\FFT_Forcaster\FFT_Forcaster\bin\Release\net6.0\publish\cAlgo.API.dll
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\FFT_Forcaster\FFT_Forcaster\bin\Release\net6.0\publish\MathNet.Numerics.dll

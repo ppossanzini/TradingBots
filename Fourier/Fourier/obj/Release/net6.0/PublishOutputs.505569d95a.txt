@@ -1,0 +1,5 @@
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\bin\Release\net6.0\publish\Fourier.dll
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\bin\Release\net6.0\publish\Fourier.deps.json
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\bin\Release\net6.0\publish\Fourier.pdb
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\bin\Release\net6.0\publish\cAlgo.API.dll
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\bin\Release\net6.0\publish\MathNet.Numerics.dll

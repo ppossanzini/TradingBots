@@ -1,0 +1,11 @@
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\bin\Release\net6.0\Fourier.deps.json
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\bin\Release\net6.0\Fourier.dll
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\bin\Release\net6.0\ref\Fourier.dll
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\bin\Release\net6.0\Fourier.pdb
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\obj\Release\net6.0\Fourier.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\obj\Release\net6.0\Fourier.AssemblyInfoInputs.cache
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\obj\Release\net6.0\Fourier.AssemblyInfo.cs
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\obj\Release\net6.0\Fourier.csproj.CoreCompileInputs.cache
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\obj\Release\net6.0\Fourier.dll
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\obj\Release\net6.0\ref\Fourier.dll
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\Fourier\Fourier\obj\Release\net6.0\Fourier.pdb

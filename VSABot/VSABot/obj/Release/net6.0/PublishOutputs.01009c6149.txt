@@ -1,0 +1,4 @@
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\VSABot\VSABot\bin\Release\net6.0\publish\VSABot.dll
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\VSABot\VSABot\bin\Release\net6.0\publish\VSABot.deps.json
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\VSABot\VSABot\bin\Release\net6.0\publish\VSABot.pdb
+C:\Users\Paolo\Documents\cAlgo\Sources\Robots\VSABot\VSABot\bin\Release\net6.0\publish\cAlgo.API.dll
