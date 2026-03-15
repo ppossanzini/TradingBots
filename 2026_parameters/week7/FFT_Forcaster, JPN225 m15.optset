@@ -1,0 +1,967 @@
+﻿{
+  "parameters": [
+    {
+      "name": "c02b25309272471b89a4de3831c473c5",
+      "value": "m15",
+      "parameterType": "TimeFrame",
+      "metadata": null,
+      "optimize": false,
+      "values": [
+        "m1",
+        "m2",
+        "m3",
+        "m4",
+        "m5",
+        "m6",
+        "m7",
+        "m8",
+        "m9",
+        "m10",
+        "m15",
+        "m20",
+        "m30",
+        "m45",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h6",
+        "h8",
+        "h12",
+        "D1",
+        "D2",
+        "D3",
+        "W1",
+        "Month1"
+      ]
+    },
+    {
+      "name": "PositionPrefix",
+      "value": "Furiere",
+      "parameterType": "String",
+      "metadata": {
+        "defaultValue": "Furiere",
+        "parameterType": "String",
+        "propertyName": "PositionPrefix",
+        "friendlyName": "Name",
+        "groupName": "General",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "FullName",
+      "value": "Furiere_Pending",
+      "parameterType": "String",
+      "metadata": {
+        "defaultValue": "Furiere_Pending",
+        "parameterType": "String",
+        "propertyName": "FullName",
+        "friendlyName": "Full Name",
+        "groupName": "General",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "FromHour",
+      "value": "1",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.0,
+        "maxValue": 24.0,
+        "step": 0.01,
+        "defaultValue": 7.0,
+        "parameterType": "Double",
+        "propertyName": "FromHour",
+        "friendlyName": "From the hour",
+        "groupName": "Trading Moment",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "0",
+      "max": "24",
+      "step": "0.01"
+    },
+    {
+      "name": "ToTradeHour",
+      "value": "20",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.0,
+        "maxValue": 24.0,
+        "step": 0.01,
+        "defaultValue": 17.0,
+        "parameterType": "Double",
+        "propertyName": "ToTradeHour",
+        "friendlyName": "To trade hour",
+        "groupName": "Trading Moment",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "0",
+      "max": "24",
+      "step": "0.01"
+    },
+    {
+      "name": "ToHour",
+      "value": "22",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.0,
+        "maxValue": 24.0,
+        "step": 0.01,
+        "defaultValue": 17.0,
+        "parameterType": "Double",
+        "propertyName": "ToHour",
+        "friendlyName": "End of day hour",
+        "groupName": "Trading Moment",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "0",
+      "max": "24",
+      "step": "0.01"
+    },
+    {
+      "name": "MarketThresholdPeriods",
+      "value": "800",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": 0,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 17,
+        "parameterType": "Integer",
+        "propertyName": "MarketThresholdPeriods",
+        "friendlyName": "MarketThresholdPeriods",
+        "groupName": "Trading Moment",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "300",
+      "max": "1400",
+      "step": "50"
+    },
+    {
+      "name": "MarketThresholdPerc",
+      "value": "80",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.0,
+        "maxValue": 100.0,
+        "step": 1.0,
+        "defaultValue": 85.0,
+        "parameterType": "Double",
+        "propertyName": "MarketThresholdPerc",
+        "friendlyName": "MarketThresholdPerc",
+        "groupName": "Trading Moment",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "70",
+      "max": "90",
+      "step": "2"
+    },
+    {
+      "name": "SignalLength",
+      "value": "200",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": -2147483648,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 1000,
+        "parameterType": "Integer",
+        "propertyName": "SignalLength",
+        "friendlyName": "SignalLength",
+        "groupName": "FFT",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "100",
+      "max": "1000",
+      "step": "50"
+    },
+    {
+      "name": "Source",
+      "value": "Close",
+      "parameterType": "DataSeries",
+      "metadata": {
+        "defaultValue": {
+          "ownerId": "00000000-0000-0000-0000-000000000000",
+          "friendlyName": "Close",
+          "isStandard": true
+        },
+        "parameterType": "DataSeries",
+        "propertyName": "Source",
+        "friendlyName": "Source",
+        "groupName": "FFT",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "HarmonicsCount",
+      "value": "65",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": 0,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 40,
+        "parameterType": "Integer",
+        "propertyName": "HarmonicsCount",
+        "friendlyName": "HarmonicsCount",
+        "groupName": "FFT",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "40",
+      "max": "120",
+      "step": "5"
+    },
+    {
+      "name": "LargeHarmonicsCount",
+      "value": "65",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": 0,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 40,
+        "parameterType": "Integer",
+        "propertyName": "LargeHarmonicsCount",
+        "friendlyName": "LargeHarmonicsCount",
+        "groupName": "FFT",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "20",
+      "max": "100",
+      "step": "5"
+    },
+    {
+      "name": "PredictTrend",
+      "value": "True",
+      "parameterType": "Boolean",
+      "metadata": {
+        "defaultValue": true,
+        "parameterType": "Boolean",
+        "propertyName": "PredictTrend",
+        "friendlyName": "PredictTrend",
+        "groupName": "Prediction Logic",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "MinTrendingCandles",
+      "value": "6",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": 0,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 3,
+        "parameterType": "Integer",
+        "propertyName": "MinTrendingCandles",
+        "friendlyName": "MinTrendingCandles",
+        "groupName": "Prediction Logic",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "0",
+      "max": "8",
+      "step": "1"
+    },
+    {
+      "name": "PredictBounce",
+      "value": "True",
+      "parameterType": "Boolean",
+      "metadata": {
+        "defaultValue": true,
+        "parameterType": "Boolean",
+        "propertyName": "PredictBounce",
+        "friendlyName": "PredictBounce",
+        "groupName": "Prediction Logic",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "BounceTrendingCandles",
+      "value": "1",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": -2147483648,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 3,
+        "parameterType": "Integer",
+        "propertyName": "BounceTrendingCandles",
+        "friendlyName": "BounceTrendingCandles",
+        "groupName": "Prediction Logic",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "0",
+      "max": "8",
+      "step": "1"
+    },
+    {
+      "name": "PredictionPosition",
+      "value": "6",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": 1,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 5,
+        "parameterType": "Integer",
+        "propertyName": "PredictionPosition",
+        "friendlyName": "Prediction Position (Future)",
+        "groupName": "Pending Strategy",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "1",
+      "max": "10",
+      "step": "1"
+    },
+    {
+      "name": "LookBackPosition",
+      "value": "5",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": 1,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 3,
+        "parameterType": "Integer",
+        "propertyName": "LookBackPosition",
+        "friendlyName": "LookBackPosition",
+        "groupName": "Pending Strategy",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "1",
+      "max": "8",
+      "step": "1"
+    },
+    {
+      "name": "PendingExpirationBars",
+      "value": "5",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": 1,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 5,
+        "parameterType": "Integer",
+        "propertyName": "PendingExpirationBars",
+        "friendlyName": "Pending Expiration (Bars)",
+        "groupName": "Pending Strategy",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "1",
+      "max": "10",
+      "step": "1"
+    },
+    {
+      "name": "PredictionStrength",
+      "value": "0.1",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.0,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 3.0,
+        "parameterType": "Double",
+        "propertyName": "PredictionStrength",
+        "friendlyName": "Prediction Strength (pip)",
+        "groupName": "Pending Strategy",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "0",
+      "max": "2",
+      "step": "0.1"
+    },
+    {
+      "name": "MovingAverageDataSeries",
+      "value": "Close",
+      "parameterType": "DataSeries",
+      "metadata": {
+        "defaultValue": {
+          "ownerId": "00000000-0000-0000-0000-000000000000",
+          "friendlyName": "Close",
+          "isStandard": true
+        },
+        "parameterType": "DataSeries",
+        "propertyName": "MovingAverageDataSeries",
+        "friendlyName": "Data Serie",
+        "groupName": "Moving Average",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "MovingAveratePeriods",
+      "value": "17",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": -2147483648,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 100,
+        "parameterType": "Integer",
+        "propertyName": "MovingAveratePeriods",
+        "friendlyName": "Periods",
+        "groupName": "Moving Average",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "10",
+      "max": "105",
+      "step": "5"
+    },
+    {
+      "name": "MovingAverageType",
+      "value": "0",
+      "parameterType": "Enum",
+      "metadata": {
+        "enumValues": [
+          {
+            "value": 0,
+            "name": "Simple"
+          },
+          {
+            "value": 1,
+            "name": "Exponential"
+          },
+          {
+            "value": 2,
+            "name": "TimeSeries"
+          },
+          {
+            "value": 3,
+            "name": "Triangular"
+          },
+          {
+            "value": 4,
+            "name": "VIDYA"
+          },
+          {
+            "value": 5,
+            "name": "Weighted"
+          },
+          {
+            "value": 6,
+            "name": "WilderSmoothing"
+          },
+          {
+            "value": 7,
+            "name": "Hull"
+          },
+          {
+            "value": 8,
+            "name": "DoubleExponential"
+          },
+          {
+            "value": 9,
+            "name": "TripleExponential"
+          },
+          {
+            "value": 10,
+            "name": "KaufmanAdaptive"
+          }
+        ],
+        "defaultValue": 0,
+        "parameterType": "Enum",
+        "propertyName": "MovingAverageType",
+        "friendlyName": "Moving Average Type",
+        "groupName": "Moving Average",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "values": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10"
+      ]
+    },
+    {
+      "name": "MaxTakeProfitPips",
+      "value": "1000",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.0,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 10.0,
+        "defaultValue": 30.0,
+        "parameterType": "Double",
+        "propertyName": "MaxTakeProfitPips",
+        "friendlyName": "Max Take Profit (pips)",
+        "groupName": "Take Profit",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": true,
+      "min": "100",
+      "max": "2000",
+      "step": "100"
+    },
+    {
+      "name": "MinTakeProfitPips",
+      "value": "50",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.0,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 10.0,
+        "defaultValue": 30.0,
+        "parameterType": "Double",
+        "propertyName": "MinTakeProfitPips",
+        "friendlyName": "Min Take Profit (pips)",
+        "groupName": "Take Profit",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": true,
+      "min": "50",
+      "max": "500",
+      "step": "50"
+    },
+    {
+      "name": "TakeProfitOnBar",
+      "value": "False",
+      "parameterType": "Boolean",
+      "metadata": {
+        "defaultValue": false,
+        "parameterType": "Boolean",
+        "propertyName": "TakeProfitOnBar",
+        "friendlyName": "Adjust Take Profit on bar(pips)",
+        "groupName": "Take Profit",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "OnBarTakeProfitPips",
+      "value": "30",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.0,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 10.0,
+        "defaultValue": 30.0,
+        "parameterType": "Double",
+        "propertyName": "OnBarTakeProfitPips",
+        "friendlyName": "OnBar Take Profit (pips)",
+        "groupName": "Take Profit",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "0",
+      "max": "80",
+      "step": "2"
+    },
+    {
+      "name": "TakeProfitOnBarAge",
+      "value": "30",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.0,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 10.0,
+        "defaultValue": 30.0,
+        "parameterType": "Double",
+        "propertyName": "TakeProfitOnBarAge",
+        "friendlyName": "OnBar Take Profit age (min)",
+        "groupName": "Take Profit",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "14",
+      "max": "80",
+      "step": "15"
+    },
+    {
+      "name": "MinQuantity",
+      "value": "0.1",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.001,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.01,
+        "defaultValue": 1.0,
+        "parameterType": "Double",
+        "propertyName": "MinQuantity",
+        "friendlyName": "Min Quantity (Lots)",
+        "groupName": "Money Management",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "0.1",
+      "max": "0.5",
+      "step": "0.1"
+    },
+    {
+      "name": "MaxQuantity",
+      "value": "50",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.001,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.01,
+        "defaultValue": 1.0,
+        "parameterType": "Double",
+        "propertyName": "MaxQuantity",
+        "friendlyName": "Max Quantity (Lots)",
+        "groupName": "Money Management",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "1",
+      "max": "2",
+      "step": "0.1"
+    },
+    {
+      "name": "StepQuantity",
+      "value": "0.1",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.001,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.0001,
+        "defaultValue": 1.0,
+        "parameterType": "Double",
+        "propertyName": "StepQuantity",
+        "friendlyName": "Step Quantity (Lots)",
+        "groupName": "Money Management",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "0.01",
+      "max": "0.2",
+      "step": "0.01"
+    },
+    {
+      "name": "CalcMaxLongPositionsOnMargin",
+      "value": "True",
+      "parameterType": "Boolean",
+      "metadata": {
+        "defaultValue": false,
+        "parameterType": "Boolean",
+        "propertyName": "CalcMaxLongPositionsOnMargin",
+        "friendlyName": "Evaluate max number of long open positions on margin",
+        "groupName": "Money Management",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "MinMarginLevel",
+      "value": "200",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 100.0,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 10.0,
+        "defaultValue": 150.0,
+        "parameterType": "Double",
+        "propertyName": "MinMarginLevel",
+        "friendlyName": "Min margin level",
+        "groupName": "Money Management",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "100",
+      "max": "200",
+      "step": "10"
+    },
+    {
+      "name": "UseMarginToLotSize",
+      "value": "True",
+      "parameterType": "Boolean",
+      "metadata": {
+        "defaultValue": false,
+        "parameterType": "Boolean",
+        "propertyName": "UseMarginToLotSize",
+        "friendlyName": "Use margin to lot size ",
+        "groupName": "Money Management",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "MarginLotDivider",
+      "value": "600",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": -1.7976931348623157E+308,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 1500.0,
+        "parameterType": "Double",
+        "propertyName": "MarginLotDivider",
+        "friendlyName": "Margin Lot divider",
+        "groupName": "Money Management",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": true,
+      "min": "300",
+      "max": "1500",
+      "step": "100"
+    },
+    {
+      "name": "MaxLongPositions",
+      "value": "20",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": 0,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 3,
+        "parameterType": "Integer",
+        "propertyName": "MaxLongPositions",
+        "friendlyName": "Max active long positions",
+        "groupName": "Money Management",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "0",
+      "max": "8",
+      "step": "1"
+    },
+    {
+      "name": "MaxShortPositions",
+      "value": "0",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": 0,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 0,
+        "parameterType": "Integer",
+        "propertyName": "MaxShortPositions",
+        "friendlyName": "Max active short positions",
+        "groupName": "Money Management",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "0",
+      "max": "5",
+      "step": "1"
+    },
+    {
+      "name": "DistanceBetweenPositionsInPips",
+      "value": "100",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.0,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 50.0,
+        "parameterType": "Double",
+        "propertyName": "DistanceBetweenPositionsInPips",
+        "friendlyName": "Distance between positions (pips)",
+        "groupName": "Money Management",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "0",
+      "max": "1000",
+      "step": "30"
+    },
+    {
+      "name": "MinTickVolume",
+      "value": "10",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": 0,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 0,
+        "parameterType": "Integer",
+        "propertyName": "MinTickVolume",
+        "friendlyName": "Min TickVolume to open positions",
+        "groupName": "Money Management",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "50",
+      "max": "500",
+      "step": "10"
+    },
+    {
+      "name": "CloseAllEod",
+      "value": "False",
+      "parameterType": "Boolean",
+      "metadata": {
+        "defaultValue": true,
+        "parameterType": "Boolean",
+        "propertyName": "CloseAllEod",
+        "friendlyName": "Close all at the end of the day",
+        "groupName": "Close Strategy",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "TakeProfitEod",
+      "value": "False",
+      "parameterType": "Boolean",
+      "metadata": {
+        "defaultValue": true,
+        "parameterType": "Boolean",
+        "propertyName": "TakeProfitEod",
+        "friendlyName": "Take profit at end of the day",
+        "groupName": "Close Strategy",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "CloseOnBar",
+      "value": "True",
+      "parameterType": "Boolean",
+      "metadata": {
+        "defaultValue": true,
+        "parameterType": "Boolean",
+        "propertyName": "CloseOnBar",
+        "friendlyName": "Close on Bar",
+        "groupName": "Close Strategy",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "CloseOnBarPostionAge",
+      "value": "90",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": -2147483648,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 1,
+        "parameterType": "Integer",
+        "propertyName": "CloseOnBarPostionAge",
+        "friendlyName": "Close on Bar position age (min)",
+        "groupName": "Close Strategy",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "14",
+      "max": "180",
+      "step": "15"
+    },
+    {
+      "name": "CloseOldIfProfit",
+      "value": "False",
+      "parameterType": "Boolean",
+      "metadata": {
+        "defaultValue": true,
+        "parameterType": "Boolean",
+        "propertyName": "CloseOldIfProfit",
+        "friendlyName": "Close old if profit",
+        "groupName": "Close Strategy",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "MinProfit",
+      "value": "150",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": -1.7976931348623157E+308,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 100.0,
+        "parameterType": "Double",
+        "propertyName": "MinProfit",
+        "friendlyName": "Old min profit",
+        "groupName": "Close Strategy",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "50",
+      "max": "300",
+      "step": "50"
+    },
+    {
+      "name": "WrongSignalTimeLimit",
+      "value": "29",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": -2147483648,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 100,
+        "parameterType": "Integer",
+        "propertyName": "WrongSignalTimeLimit",
+        "friendlyName": "Close on wrong signal time limit (min)",
+        "groupName": "Close Strategy",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "14",
+      "max": "60",
+      "step": "15"
+    }
+  ]
+}

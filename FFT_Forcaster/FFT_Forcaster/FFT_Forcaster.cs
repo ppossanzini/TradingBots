@@ -38,12 +38,12 @@ namespace cAlgo.Robots
     [Parameter("End of day hour", Group = "Trading Moment", MinValue = 0, DefaultValue = 17, MaxValue = 24, Step = 0.01)]
     public double ToHour { get; set; }
 
-    [Parameter(nameof(MarketThresholdPeriods), Group = "Trading Moment", MinValue = 0, DefaultValue = 17, Step=1)]
+    [Parameter(nameof(MarketThresholdPeriods), Group = "Trading Moment", MinValue = 0, DefaultValue = 17, Step = 1)]
     public int MarketThresholdPeriods { get; set; }
-    
-    [Parameter(nameof(MarketThresholdPerc), Group = "Trading Moment", MinValue = 0, DefaultValue = 85, MaxValue = 100, Step=1)]
+
+    [Parameter(nameof(MarketThresholdPerc), Group = "Trading Moment", MinValue = 0, DefaultValue = 85, MaxValue = 100, Step = 1)]
     public double MarketThresholdPerc { get; set; }
-    
+
     #endregion
 
     #region FFT
@@ -56,6 +56,13 @@ namespace cAlgo.Robots
 
     [Parameter(nameof(HarmonicsCount), MinValue = 0, Step = 1, DefaultValue = 40, Group = "FFT")]
     public int HarmonicsCount { get; set; } = 40;
+
+    #endregion
+
+    #region FFT
+
+    [Parameter(nameof(LargeHarmonicsCount), MinValue = 0, Step = 1, DefaultValue = 40, Group = "FFT")]
+    public int LargeHarmonicsCount { get; set; } = 40;
 
     #endregion
 
@@ -106,7 +113,6 @@ namespace cAlgo.Robots
     #endregion
 
     #region Risk Management
-    
 
     [Parameter("Max Take Profit (pips)", Group = "Take Profit", MinValue = 0, DefaultValue = 30, Step = 10)]
     public double MaxTakeProfitPips { get; set; }
@@ -186,6 +192,9 @@ namespace cAlgo.Robots
 
     [Parameter("Old min profit", Group = "Close Strategy", DefaultValue = 100)]
     public double MinProfit { get; set; }
+    
+    [Parameter("Close on wrong signal time limit (min)", Group = "Close Strategy", DefaultValue = 100)]
+    public int WrongSignalTimeLimit { get; set; }
 
     #endregion
 
@@ -289,14 +298,14 @@ namespace cAlgo.Robots
         po.ModifyExpirationTime(expiration);
         po.ModifyTargetPrice(targetPrice);
       }
-      
+
       var lastbar = Bars.Last(1);
       if (lastbar.TickVolume < MinTickVolume)
       {
         Print($"Exit no volume: {lastbar.TickVolume} < {MinTickVolume}");
         return;
       }
-      
+
       var (topPricep, bottomPricep, trp) = CalcMarketThreshold(MarketThresholdPeriods, MarketThresholdPerc);
       if (Symbol.Ask > trp) return;
 
@@ -319,7 +328,7 @@ namespace cAlgo.Robots
       Print("Margin Level: " + margin);
       var nearPosition = FindNearestPosition(TradeType.Buy);
       var nearPending = PendingOrders.Where(o => o.TradeType == TradeType.Buy && o.Label == FullName).MinBy(o => Math.Abs(o.DistancePips));
-      
+
       switch (direction.trade)
       {
         case TradeType.Buy when activeLongs >= this.MaxLongPositions ||
@@ -345,6 +354,7 @@ namespace cAlgo.Robots
 
       var vol = qta.QuantityToVolume(Symbol);
 
+
       CalcTPandSl(direction.trade, out var tp);
 
       switch (direction.trade)
@@ -356,7 +366,7 @@ namespace cAlgo.Robots
             null,
             tp, ProtectionType.Relative, expiration);
           break;
-        case  TradeType.Buy when direction.predictiontype == Helpers.PredictionTypeEnum.Bounce && targetPrice < Symbol.Bid:
+        case TradeType.Buy when direction.predictiontype == Helpers.PredictionTypeEnum.Bounce && targetPrice < Symbol.Bid:
           PlaceLimitOrder(TradeType.Buy,
             SymbolName, vol, targetPrice,
             FullName,
@@ -424,13 +434,14 @@ namespace cAlgo.Robots
     {
       var tp = Bars.ClosePrices.TakeLast(lookbackperiods).Max();
       var bp = Bars.ClosePrices.TakeLast(lookbackperiods).Min();
-      
-      var delta = tp - bp;
-      var result = delta *  thresholdlevel /100;
 
-      return (tp, bp, result+ bp);
+
+      var delta = tp - bp;
+      var result = delta * thresholdlevel / 100;
+
+      return (tp, bp, result + bp);
     }
-    
+
 
     private (TradeType?, Helpers.PredictionTypeEnum?, string) CalcFftPredictions()
     {
@@ -444,32 +455,41 @@ namespace cAlgo.Robots
           Source.Last(SignalLength - i) - _movingAverage.Result.Last(SignalLength - i), 0.0);
 
       var imixedResult = priceSamples.CalcFft().StrongHarmonicFilter(HarmonicsCount).CalcInvertFft();
+      var largeImixedResult = priceSamples.CalcFft().StrongHarmonicFilter(LargeHarmonicsCount).CalcInvertFft();
 
       var dir2 = imixedResult.ExtractValue(SignalLength, PredictionPosition + 1) -
                  imixedResult.ExtractValue(SignalLength, 1);
       var dir1 = imixedResult.ExtractValue(SignalLength, -1) -
                  imixedResult.ExtractValue(SignalLength, -LookBackPosition - 1);
 
-      var actualdata = $"dir1: {dir1} -- dir2: {dir2}";
+      var ldir2 = imixedResult.ExtractValue(SignalLength, PredictionPosition + 1) -
+                  imixedResult.ExtractValue(SignalLength, 1);
+      var ldir1 = imixedResult.ExtractValue(SignalLength, -1) -
+                  imixedResult.ExtractValue(SignalLength, -LookBackPosition - 1);
+
+      var actualdata = $"dir1: {dir1} -- dir2: {dir2}  --- large dir1: {ldir1} -- large dir2: {ldir2}";
       if (Math.Abs(dir2) < PredictionStrength) return (null, null, $"Niente da fare {actualdata} - Strenght: {PredictionStrength}");
 
 
       if (PredictTrend)
       {
-        if (dir1 > 0 && dir2 > 0 && Bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0))
-          return (TradeType.Buy, Helpers.PredictionTypeEnum.Trend, $"{actualdata} --> Trending LONG");
-        if (dir1 < 0 && dir2 < 0 && Bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i < 0))
-          return (TradeType.Sell, Helpers.PredictionTypeEnum.Trend, $"{actualdata} --> Trending SHORT");
+        if (ldir1 > 0 && ldir2 > 0 && Bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0))
+          if (dir1 > 0 && dir2 > 0 && Bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0))
+            return (TradeType.Buy, Helpers.PredictionTypeEnum.Trend, $"{actualdata} --> Trending LONG");
+
+        if (ldir1 < 0 && ldir2 < 0 && Bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i < 0))
+          if (dir1 < 0 && dir2 < 0 && Bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i < 0))
+            return (TradeType.Sell, Helpers.PredictionTypeEnum.Trend, $"{actualdata} --> Trending SHORT");
       }
 
       if (PredictBounce)
       {
         // var nv = imixedResult.ExtractValue(SignalLength, 5);
-        if (dir1 > 0 && dir2 < 0 && //nv < imixedResult.ExtractValue(SignalLength, 0) &&
+        if (dir1 > 0 && dir2 < 0 &&  ldir1 > 0 && ldir2 < 0 &&
             Bars.TakeLast(BounceTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0)) // Se le ultime x candele sono Long
           return (TradeType.Sell, Helpers.PredictionTypeEnum.Bounce, $"{actualdata} --> Bouncing SHORT");
 
-        if (dir1 < 0 && dir2 > 0 && //nv > imixedResult.ExtractValue(SignalLength, 0) &&
+        if (dir1 < 0 && dir2 > 0 && ldir1 < 0 && ldir2 > 0 &&
             Bars.TakeLast(BounceTrendingCandles).Select(b => b.BarDirection()).All(i => i < 0)) // Se le ultime x candele solo short
           return (TradeType.Buy, Helpers.PredictionTypeEnum.Bounce, $"{actualdata} --> Bouncing LONG");
       }
@@ -487,6 +507,15 @@ namespace cAlgo.Robots
         i.SymbolName == SymbolName &&
         i.Label.StartsWith(FullName)).ToArray();
 
+      
+      // Valuto le aperture rischiose
+      var direction = CalcDirection();
+      var remediationtime = Server.Time.Subtract(TimeSpan.FromMinutes(WrongSignalTimeLimit));
+      if(direction.trade == TradeType.Sell)
+        if (tradepositions.Any())
+          foreach (var pos in tradepositions.Where(i => i.EntryTime > remediationtime && i.NetProfit < 0))
+            pos.Close();
+      
       if (CloseOnBar)
       {
         if (tradepositions.Any())
