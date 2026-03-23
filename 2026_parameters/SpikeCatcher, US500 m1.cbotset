@@ -1,0 +1,28 @@
+﻿{
+  "Chart": {
+    "Symbol": "US500",
+    "Period": "m1"
+  },
+  "Parameters": {
+    "MinVolumeLots": 0.1,
+    "MaxVolumeLots": 2.0,
+    "MarginPercentDivider": 0.8,
+    "FixedOffsetPips": 5.4,
+    "UseDynamicOffset": false,
+    "AtrPeriod": 10,
+    "AtrMultiplier": 0.6,
+    "MinDynamicOffsetPips": 2.9000000000000004,
+    "MaxDynamicOffsetPips": 15.9,
+    "TakeProfitPips": 101.0,
+    "MaxSpreadPips": 5.0,
+    "BreakEvenTriggerPips": 2.0,
+    "BreakEvenPlusPips": 1.2000000000000002,
+    "TrailingTriggerPips": 2.0,
+    "TrailingDistancePips": 3.0,
+    "TradingStartTime": "08:00",
+    "TradingEndTime": "22:00",
+    "FridayCloseTime": "20:00",
+    "OrderDirection": 2,
+    "Label": "PendingRecenterBot"
+  }
+}
