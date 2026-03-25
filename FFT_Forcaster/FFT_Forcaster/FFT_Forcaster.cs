@@ -7,6 +7,7 @@ using System.Text;
 using cAlgo.API;
 using cAlgo.API.Indicators;
 using cAlgo.API.Internals;
+using MathNet.Numerics.Distributions;
 using MathNet.Numerics.IntegralTransforms;
 
 // ReSharper disable UnusedType.Global
@@ -16,6 +17,15 @@ using MathNet.Numerics.IntegralTransforms;
 
 namespace cAlgo.Robots
 {
+  public enum TrailingStopStrategy
+  {
+    None,
+    Percent,
+    Absolute,
+    RelativeToLastCandle
+  }
+
+
   [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.None)]
   public class Furiere : Robot
   {
@@ -129,6 +139,15 @@ namespace cAlgo.Robots
     [Parameter("OnBar Take Profit age (min)", Group = "Take Profit", MinValue = 0, DefaultValue = 30, Step = 10)]
     public double TakeProfitOnBarAge { get; set; }
 
+    [Parameter("Trailing Stop Strategy", Group = "Trailing Stop")]
+    public TrailingStopStrategy StepperTrailingStop { get; set; }
+
+    [Parameter("Trailing Stop Min Distance (pips)", Group = "Trailing Stop", MinValue = 0, DefaultValue = 30, Step = 10)]
+    public double TrailingStopMinDistance { get; set; } = 10;
+
+    [Parameter("Trailing Stop Distance", Group = "Trailing Stop", MinValue = 0, DefaultValue = 30, Step = 10)]
+    public double TrailingStopDistance { get; set; } = 10;
+
     #endregion
 
 
@@ -192,7 +211,7 @@ namespace cAlgo.Robots
 
     [Parameter("Old min profit", Group = "Close Strategy", DefaultValue = 100)]
     public double MinProfit { get; set; }
-    
+
     [Parameter("Close on wrong signal time limit (min)", Group = "Close Strategy", DefaultValue = 100)]
     public int WrongSignalTimeLimit { get; set; }
 
@@ -259,12 +278,65 @@ namespace cAlgo.Robots
       };
     }
 
+    protected override void OnTick()
+    {
+      base.OnTick();
+
+
+      switch (StepperTrailingStop)
+      {
+        default:
+        case TrailingStopStrategy.None: return;
+        case TrailingStopStrategy.Absolute:
+          foreach (var pos in LongPositions)
+          {
+            if (pos.NetProfit < 0) continue;
+            if (pos.Pips < TrailingStopMinDistance) continue;
+            var newts = TrailingStopDistance;
+            if ((pos.Pips - newts) < (pos.Pips - TrailingStopMinDistance)) return;
+            pos.ModifyStopLossPips(newts);
+          }
+
+          break;
+        case TrailingStopStrategy.Percent:
+          foreach (var pos in LongPositions)
+          {
+            if (pos.NetProfit < 0) continue;
+            if (pos.Pips < TrailingStopMinDistance) continue;
+            var newts = pos.Pips * TrailingStopDistance / 100;
+            if ((pos.Pips - newts) < (pos.Pips - TrailingStopMinDistance)) return;
+
+            // Non attivo il trailing stop nativo ma calcolo io ad ogni tick se devo fare qualcosa. 
+            pos.ModifyStopLossPips(newts);
+          }
+
+          break;
+
+        case TrailingStopStrategy.RelativeToLastCandle:
+          foreach (var pos in LongPositions)
+          {
+            if (pos.NetProfit < 0) continue;
+            var bar = Bars.Last(1);
+
+            var delta = (bar.Close - bar.Open) * TrailingStopDistance / 100;
+            var newprice = bar.Open+ delta;
+            if(newprice < pos.EntryPrice) continue;
+            
+            pos.ModifyStopLossPrice(newprice);
+          }
+
+          break;
+      }
+    }
+
     protected override void OnBar()
     {
       CheckCloseAll();
       AdjustPositionOnBar();
       if (IsTradeTime)
         EvaluateMarketAndPlaceOrders();
+
+      base.OnBar();
     }
 
     void AdjustPositionOnBar()
@@ -485,7 +557,7 @@ namespace cAlgo.Robots
       if (PredictBounce)
       {
         // var nv = imixedResult.ExtractValue(SignalLength, 5);
-        if (dir1 > 0 && dir2 < 0 &&  ldir1 > 0 && ldir2 < 0 &&
+        if (dir1 > 0 && dir2 < 0 && ldir1 > 0 && ldir2 < 0 &&
             Bars.TakeLast(BounceTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0)) // Se le ultime x candele sono Long
           return (TradeType.Sell, Helpers.PredictionTypeEnum.Bounce, $"{actualdata} --> Bouncing SHORT");
 
@@ -507,15 +579,15 @@ namespace cAlgo.Robots
         i.SymbolName == SymbolName &&
         i.Label.StartsWith(FullName)).ToArray();
 
-      
+
       // Valuto le aperture rischiose
       var direction = CalcDirection();
       var remediationtime = Server.Time.Subtract(TimeSpan.FromMinutes(WrongSignalTimeLimit));
-      if(direction.trade == TradeType.Sell)
+      if (direction.trade == TradeType.Sell)
         if (tradepositions.Any())
           foreach (var pos in tradepositions.Where(i => i.EntryTime > remediationtime && i.NetProfit < 0))
             pos.Close();
-      
+
       if (CloseOnBar)
       {
         if (tradepositions.Any())
