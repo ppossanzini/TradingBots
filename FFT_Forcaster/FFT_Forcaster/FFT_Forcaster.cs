@@ -37,6 +37,9 @@ namespace cAlgo.Robots
     [Parameter("Full Name", Group = "General", DefaultValue = "Furiere_Pending")]
     public string FullName { get; set; }
 
+    [Parameter("Data Timeframe", Group = "General")]
+    public TimeFrame DataTimeFrame { get; set; }
+    
     #region Trading Moment
 
     [Parameter("From the hour", Group = "Trading Moment", MinValue = 0, DefaultValue = 7, MaxValue = 24, Step = 0.01)]
@@ -101,8 +104,8 @@ namespace cAlgo.Robots
     [Parameter(nameof(LookBackPosition), MinValue = 1, DefaultValue = 3, Group = "Pending Strategy")]
     public int LookBackPosition { get; set; } = 3;
 
-    [Parameter("Pending Expiration (Bars)", MinValue = 1, DefaultValue = 5, Group = "Pending Strategy")]
-    public int PendingExpirationBars { get; set; } = 5;
+    [Parameter("Pending Expiration (_bars)", MinValue = 1, DefaultValue = 5, Group = "Pending Strategy")]
+    public int PendingExpiration_bars { get; set; } = 5;
 
     [Parameter("Prediction Strength (pip)", MinValue = 0, DefaultValue = 3, Group = "Pending Strategy")]
     public double PredictionStrength { get; set; }
@@ -158,10 +161,7 @@ namespace cAlgo.Robots
 
     [Parameter("Max Quantity (Lots)", Group = "Money Management", DefaultValue = 1, MinValue = 0.001, Step = 0.01)]
     public double MaxQuantity { get; set; }
-
-    [Parameter("Step Quantity (Lots)", Group = "Money Management", DefaultValue = 1, MinValue = 0.001,
-      Step = 0.0001)]
-    public double StepQuantity { get; set; }
+    
 
     [Parameter("Evaluate max number of long open positions on margin", Group = "Money Management")]
     public bool CalcMaxLongPositionsOnMargin { get; set; }
@@ -216,10 +216,11 @@ namespace cAlgo.Robots
     public int WrongSignalTimeLimit { get; set; }
 
     #endregion
-
-    private double _tradeQuantity = 0;
+    
     private bool IsMarketTime => Server.Time.Hour >= FromHour && Server.Time.Hour <= ToHour;
     private bool IsTradeTime => Server.Time.Hour >= FromHour && Server.Time.Hour <= ToTradeHour;
+    
+    private Bars _bars;
 
 
     private Position[] ShortPositions
@@ -248,40 +249,17 @@ namespace cAlgo.Robots
 
     protected override void OnStart()
     {
-      Bars.LoadMoreHistory();
-      _tradeQuantity = MinQuantity;
+      
+      
+      _bars = MarketData.GetBars(DataTimeFrame,SymbolName);
+      _bars.LoadMoreHistory();
+      
       _movingAverage = Indicators.MovingAverage(MovingAverageDataSeries, MovingAveratePeriods, MovingAverageType);
 
-      this.Positions.Closed += args =>
-      {
-        if (args.Reason == PositionCloseReason.StopLoss)
-        {
-          _tradeQuantity = MinQuantity;
-        }
-
-        if (_takeprofitadjusted.Contains(args.Position.Id))
-        {
-          _takeprofitadjusted.Remove(args.Position.Id);
-        }
-
-        if (args.Reason == PositionCloseReason.TakeProfit)
-        {
-          var marginquantity = ((Account.Margin == 0 ? Account.Equity : Account.Equity / Account.Margin) /
-                                MarginLotDivider);
-          _tradeQuantity = (UseMarginToLotSize ? marginquantity : (_tradeQuantity + StepQuantity));
-          Print(
-            $"Quantity from Margin {(Account.Margin == 0 ? Account.Equity : Account.Equity / Account.Margin)}  / {MarginLotDivider} =  {marginquantity}");
-        }
-
-        _tradeQuantity = Math.Max(_tradeQuantity, MinQuantity);
-        _tradeQuantity = Math.Min(_tradeQuantity, MaxQuantity);
-      };
     }
 
-    protected override void OnTick()
+    private void EvaluateTrailing()
     {
-      base.OnTick();
-
 
       switch (StepperTrailingStop)
       {
@@ -293,8 +271,13 @@ namespace cAlgo.Robots
             if (pos.NetProfit < 0) continue;
             if (pos.Pips < TrailingStopMinDistance) continue;
             var newts = TrailingStopDistance;
-            if ((pos.Pips - newts) < (pos.Pips - TrailingStopMinDistance)) return;
-            pos.ModifyStopLossPips(newts);
+            if ((pos.Pips - newts) < TrailingStopMinDistance) continue;
+            
+            var newSlPrice = Symbol.Bid - newts * Symbol.PipSize;
+            if (newSlPrice < pos.EntryPrice) continue;
+            if(newSlPrice < pos.StopLoss) continue;
+            
+            pos.ModifyStopLossPrice(newSlPrice);
           }
 
           break;
@@ -304,10 +287,14 @@ namespace cAlgo.Robots
             if (pos.NetProfit < 0) continue;
             if (pos.Pips < TrailingStopMinDistance) continue;
             var newts = pos.Pips * TrailingStopDistance / 100;
-            if ((pos.Pips - newts) < (pos.Pips - TrailingStopMinDistance)) return;
-
+            if ((pos.Pips - newts) < TrailingStopMinDistance) continue;
+            
+            var newSlPrice = Symbol.Bid - newts * Symbol.PipSize;
+            if (newSlPrice < pos.EntryPrice) continue;
+            if(newSlPrice < pos.StopLoss) continue;
+            
             // Non attivo il trailing stop nativo ma calcolo io ad ogni tick se devo fare qualcosa. 
-            pos.ModifyStopLossPips(newts);
+            pos.ModifyStopLossPrice(newSlPrice);
           }
 
           break;
@@ -316,12 +303,12 @@ namespace cAlgo.Robots
           foreach (var pos in LongPositions)
           {
             if (pos.NetProfit < 0) continue;
-            var bar = Bars.Last(1);
+            var bar = _bars.Last(1);
 
             var delta = (bar.Close - bar.Open) * TrailingStopDistance / 100;
             var newprice = bar.Open+ delta;
             if(newprice < pos.EntryPrice) continue;
-            
+            if(newprice < pos.StopLoss) continue;
             pos.ModifyStopLossPrice(newprice);
           }
 
@@ -331,6 +318,9 @@ namespace cAlgo.Robots
 
     protected override void OnBar()
     {
+      EvaluateTrailing();
+      
+      if(Bars.LastBar.OpenTime != _bars.LastBar.OpenTime) return; 
       CheckCloseAll();
       AdjustPositionOnBar();
       if (IsTradeTime)
@@ -341,7 +331,7 @@ namespace cAlgo.Robots
 
     void AdjustPositionOnBar()
     {
-      var now = Bars.Last().OpenTime;
+      var now = _bars.Last().OpenTime;
       var barage = now.AddMinutes(-TakeProfitOnBarAge);
 
       if (TakeProfitOnBar)
@@ -358,7 +348,7 @@ namespace cAlgo.Robots
 
     private void EvaluateMarketAndPlaceOrders()
     {
-      DateTime expiration = Server.Time.AddMinutes((Bars.LastBar.OpenTime - Bars.Last(PendingExpirationBars).OpenTime).TotalMinutes);
+      DateTime expiration = Server.Time.AddMinutes((_bars.LastBar.OpenTime - _bars.Last(PendingExpiration_bars).OpenTime).TotalMinutes);
 
       // 1. Pulizia ordini pendenti obsoleti o contrari alla nuova previsione o con positione predetta lontada dalla nuova previsione
       double targetPrice = GetFftTargetPrice(PredictionPosition);
@@ -371,7 +361,7 @@ namespace cAlgo.Robots
         po.ModifyTargetPrice(targetPrice);
       }
 
-      var lastbar = Bars.Last(1);
+      var lastbar = _bars.Last(1);
       if (lastbar.TickVolume < MinTickVolume)
       {
         Print($"Exit no volume: {lastbar.TickVolume} < {MinTickVolume}");
@@ -384,8 +374,13 @@ namespace cAlgo.Robots
       var direction = CalcDirection();
       if (direction.trade == null) return;
 
-      var qta = _tradeQuantity;
-      if (qta == 0) return;
+      var marginquantity = ((Account.Margin == 0 ? Account.Equity : Account.Equity / Account.Margin) /
+                            MarginLotDivider);
+      var tradeQuantity = (UseMarginToLotSize ? marginquantity : (MinQuantity));
+      tradeQuantity = Math.Max(tradeQuantity, MinQuantity);
+      tradeQuantity = Math.Min(tradeQuantity, MaxQuantity);
+      
+      var vol = tradeQuantity.QuantityToVolume(Symbol);
 
       // 2. Controllo Limiti (Aperte + Pendenti)
       int activeLongs = LongPositions.Length +
@@ -424,7 +419,7 @@ namespace cAlgo.Robots
       }
 
 
-      var vol = qta.QuantityToVolume(Symbol);
+      
 
 
       CalcTPandSl(direction.trade, out var tp);
@@ -450,8 +445,8 @@ namespace cAlgo.Robots
 
     private void CalcTPandSl(TradeType? operation, out double? tp)
     {
-      var maxvolume = Bars.TickVolumes.TakeLast(SignalLength).Max();
-      tp = Math.Max(MaxTakeProfitPips * Bars.Last(1).TickVolume / maxvolume, MinTakeProfitPips);
+      var maxvolume = _bars.TickVolumes.TakeLast(SignalLength).Max();
+      tp = Math.Max(MaxTakeProfitPips * _bars.Last(1).TickVolume / maxvolume, MinTakeProfitPips);
     }
 
     private Position FindNearestPosition(TradeType? operation)
@@ -504,8 +499,8 @@ namespace cAlgo.Robots
 
     private (double topPrice, double bottomPrice, double thresholdPrice) CalcMarketThreshold(int lookbackperiods, double thresholdlevel)
     {
-      var tp = Bars.ClosePrices.TakeLast(lookbackperiods).Max();
-      var bp = Bars.ClosePrices.TakeLast(lookbackperiods).Min();
+      var tp = _bars.ClosePrices.TakeLast(lookbackperiods).Max();
+      var bp = _bars.ClosePrices.TakeLast(lookbackperiods).Min();
 
 
       var delta = tp - bp;
@@ -545,12 +540,12 @@ namespace cAlgo.Robots
 
       if (PredictTrend)
       {
-        if (ldir1 > 0 && ldir2 > 0 && Bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0))
-          if (dir1 > 0 && dir2 > 0 && Bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0))
+        if (ldir1 > 0 && ldir2 > 0 && _bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0))
+          if (dir1 > 0 && dir2 > 0 && _bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0))
             return (TradeType.Buy, Helpers.PredictionTypeEnum.Trend, $"{actualdata} --> Trending LONG");
 
-        if (ldir1 < 0 && ldir2 < 0 && Bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i < 0))
-          if (dir1 < 0 && dir2 < 0 && Bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i < 0))
+        if (ldir1 < 0 && ldir2 < 0 && _bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i < 0))
+          if (dir1 < 0 && dir2 < 0 && _bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i < 0))
             return (TradeType.Sell, Helpers.PredictionTypeEnum.Trend, $"{actualdata} --> Trending SHORT");
       }
 
@@ -558,11 +553,11 @@ namespace cAlgo.Robots
       {
         // var nv = imixedResult.ExtractValue(SignalLength, 5);
         if (dir1 > 0 && dir2 < 0 && ldir1 > 0 && ldir2 < 0 &&
-            Bars.TakeLast(BounceTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0)) // Se le ultime x candele sono Long
+            _bars.TakeLast(BounceTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0)) // Se le ultime x candele sono Long
           return (TradeType.Sell, Helpers.PredictionTypeEnum.Bounce, $"{actualdata} --> Bouncing SHORT");
 
         if (dir1 < 0 && dir2 > 0 && ldir1 < 0 && ldir2 > 0 &&
-            Bars.TakeLast(BounceTrendingCandles).Select(b => b.BarDirection()).All(i => i < 0)) // Se le ultime x candele solo short
+            _bars.TakeLast(BounceTrendingCandles).Select(b => b.BarDirection()).All(i => i < 0)) // Se le ultime x candele solo short
           return (TradeType.Buy, Helpers.PredictionTypeEnum.Bounce, $"{actualdata} --> Bouncing LONG");
       }
 
@@ -571,7 +566,7 @@ namespace cAlgo.Robots
 
     private void CheckCloseAll()
     {
-      var now = Bars.Last().OpenTime;
+      var now = _bars.Last().OpenTime;
       var closingbartime = now.AddMinutes(-CloseOnBarPostionAge);
 
       // Applico politiche di chiusura solo per operazioni che hanno trailing stop
