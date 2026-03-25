@@ -293,8 +293,11 @@ namespace cAlgo.Robots
             if (pos.NetProfit < 0) continue;
             if (pos.Pips < TrailingStopMinDistance) continue;
             var newts = TrailingStopDistance;
-            if ((pos.Pips - newts) < (pos.Pips - TrailingStopMinDistance)) return;
-            pos.ModifyStopLossPips(newts);
+            if ((pos.Pips - newts) < (TrailingStopMinDistance)) continue;
+            var newPrice = pos.EntryPrice + (newts * Symbol.PipValue);
+            // Non attivo il trailing stop nativo ma calcolo io ad ogni tick se devo fare qualcosa.
+            if (newPrice > pos.EntryPrice && newPrice > (pos.StopLoss ?? 0))
+              pos.ModifyStopLossPrice(newPrice);
           }
 
           break;
@@ -304,10 +307,11 @@ namespace cAlgo.Robots
             if (pos.NetProfit < 0) continue;
             if (pos.Pips < TrailingStopMinDistance) continue;
             var newts = pos.Pips * TrailingStopDistance / 100;
-            if ((pos.Pips - newts) < (pos.Pips - TrailingStopMinDistance)) return;
-
-            // Non attivo il trailing stop nativo ma calcolo io ad ogni tick se devo fare qualcosa. 
-            pos.ModifyStopLossPips(newts);
+            if ((pos.Pips - newts) < (TrailingStopMinDistance)) continue;
+            var newPrice = pos.EntryPrice + (newts * Symbol.PipValue);
+            // Non attivo il trailing stop nativo ma calcolo io ad ogni tick se devo fare qualcosa.
+            if (newPrice > pos.EntryPrice && newPrice > (pos.StopLoss ?? 0))
+              pos.ModifyStopLossPrice(newPrice);
           }
 
           break;
@@ -319,10 +323,11 @@ namespace cAlgo.Robots
             var bar = Bars.Last(1);
 
             var delta = (bar.Close - bar.Open) * TrailingStopDistance / 100;
-            var newprice = bar.Open+ delta;
-            if(newprice < pos.EntryPrice) continue;
-            
-            pos.ModifyStopLossPrice(newprice);
+            if (delta < 0) continue;
+
+            var newprice = bar.Open + delta;
+            if (newprice > pos.EntryPrice && newprice > (pos.StopLoss ?? 0))
+              pos.ModifyStopLossPrice(newprice);
           }
 
           break;
