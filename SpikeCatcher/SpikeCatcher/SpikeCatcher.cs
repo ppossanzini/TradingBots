@@ -49,12 +49,6 @@ namespace cAlgo.Robots
         [Parameter("Max Spread Pips", DefaultValue = 2, MinValue = 0)]
         public double MaxSpreadPips { get; set; }
 
-        [Parameter("Break Even Trigger Pips", DefaultValue = 10, MinValue = 1)]
-        public double BreakEvenTriggerPips { get; set; }
-
-        [Parameter("Break Even Plus Pips", DefaultValue = 1, MinValue = 0)]
-        public double BreakEvenPlusPips { get; set; }
-
         [Parameter("Trailing Trigger Pips", DefaultValue = 20, MinValue = 1)]
         public double TrailingTriggerPips { get; set; }
 
@@ -114,7 +108,6 @@ namespace cAlgo.Robots
         {
             if (!IsWithinTradingWindow())
             {
-                CancelRemainingPendingOrders();
                 Print("Fuori fascia oraria di trading, nessun nuovo ordine piazzato.");
                 return;
             }
@@ -126,8 +119,7 @@ namespace cAlgo.Robots
                 return;
             }
             
-
-            CancelRemainingPendingOrders();
+            foreach (var o in PendingOrders) o.Cancel();
 
             var volumeInUnits = GetDynamicVolumeInUnits();
             var offsetPips = GetCurrentOffsetPips();
@@ -136,10 +128,13 @@ namespace cAlgo.Robots
             var sellPrice = Symbol.Bid - offsetPips * Symbol.PipSize;
 
             if (OrderDirection == OrderDirectionMode.Both || OrderDirection == OrderDirectionMode.LongOnly)
-                PlaceStopOrder(TradeType.Buy, SymbolName, volumeInUnits, buyPrice, Label, null, TakeProfitPips);
+                PlaceStopOrder(TradeType.Buy, SymbolName, volumeInUnits, buyPrice, Label,
+                   null, TakeProfitPips);
+                
 
             if (OrderDirection == OrderDirectionMode.Both || OrderDirection == OrderDirectionMode.ShortOnly)
-                PlaceStopOrder(TradeType.Sell, SymbolName, volumeInUnits, sellPrice, Label, null, TakeProfitPips);
+                PlaceStopOrder(TradeType.Sell, SymbolName, volumeInUnits, sellPrice, Label, null, 
+                    TakeProfitPips);
 
             Print("Pending aggiornati. Volume={0} units, Offset={1:F1} pips, Direzione={2}, BuyStop={3}, SellStop={4}",
                 volumeInUnits, offsetPips, OrderDirection, buyPrice, sellPrice);
@@ -189,20 +184,14 @@ namespace cAlgo.Robots
         {
             // foreach (var position in Positions.Where(p => p.SymbolName == SymbolName && p.Label == Label).ToArray())
             //     ClosePosition(position);
-
-            CancelRemainingPendingOrders();
+            
             Print("Venerdì: posizioni chiuse e pending cancellate.");
-        }
-
-        private void CancelRemainingPendingOrders()
-        {
-            foreach (var order in PendingOrders.Where(o => o.SymbolName == SymbolName && o.Label == Label).ToArray())
-                CancelPendingOrder(order);
-        }
+        }   
+        
 
         private double GetCurrentOffsetPips()
         {
-            if (!UseDynamicOffset)
+            //if (!UseDynamicOffset)
                 return FixedOffsetPips;
 
             var atrPrice = _atr.Result.LastValue;
@@ -225,29 +214,12 @@ namespace cAlgo.Robots
 
             if (positions.Length == 0)
                 return;
-
-            CancelRemainingPendingOrders();
+            
 
             foreach (var position in positions)
             {
                 var currentProfitPips = position.Pips;
                 double? newStopLossPrice = position.StopLoss;
-
-                if (currentProfitPips >= BreakEvenTriggerPips)
-                {
-                    if (position.TradeType == TradeType.Buy)
-                    {
-                        var bePrice = position.EntryPrice + BreakEvenPlusPips * Symbol.PipSize;
-                        if (!position.StopLoss.HasValue || position.StopLoss.Value < bePrice)
-                            newStopLossPrice = bePrice;
-                    }
-                    else if (position.TradeType == TradeType.Sell)
-                    {
-                        var bePrice = position.EntryPrice - BreakEvenPlusPips * Symbol.PipSize;
-                        if (!position.StopLoss.HasValue || position.StopLoss.Value > bePrice)
-                            newStopLossPrice = bePrice;
-                    }
-                }
 
                 if (currentProfitPips >= TrailingTriggerPips)
                 {
@@ -264,13 +236,14 @@ namespace cAlgo.Robots
                             newStopLossPrice = trailingPrice;
                     }
                 }
-
+/*
                 if (newStopLossPrice.HasValue &&
                     (!position.StopLoss.HasValue || Math.Abs(position.StopLoss.Value - newStopLossPrice.Value) > Symbol.PipSize / 10))
                 {
                     ModifyPosition(position, newStopLossPrice, position.TakeProfit);
                     Print("Posizione aggiornata. SL={0}, Pips={1:F1}", newStopLossPrice.Value, currentProfitPips);
                 }
+                */
             }
         }
     }
