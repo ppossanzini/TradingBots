@@ -175,13 +175,13 @@ namespace cAlgo.Robots
 
       if (OrderDirection == OrderDirectionMode.Both || OrderDirection == OrderDirectionMode.LongOnly)
         if (LongPositions.Length < MaxLongPositions)
-          PlaceStopOrder(TradeType.Buy, SymbolName, volumeInUnits, buyPrice, Label,
+          PlaceStopOrder(TradeType.Buy, SymbolName, volumeInUnits, buyPrice, PositionPrefix+  Label,
             null, TakeProfitPips);
 
 
       if (OrderDirection == OrderDirectionMode.Both || OrderDirection == OrderDirectionMode.ShortOnly)
         if (ShortPositions.Length < MaxShortPositions)
-          PlaceStopOrder(TradeType.Sell, SymbolName, volumeInUnits, sellPrice, Label, null,
+          PlaceStopOrder(TradeType.Sell, SymbolName, volumeInUnits, sellPrice, PositionPrefix+  Label, null,
             TakeProfitPips);
 
       Print("Pending aggiornati. Volume={0} units, Offset={1:F1} pips, Direzione={2}, BuyStop={3}, SellStop={4}",
