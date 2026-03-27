@@ -173,10 +173,10 @@ namespace cAlgo.Robots
       var nearShortPosition = FindNearestPosition(TradeType.Sell);
 
       var isLongPositionFarEnough = (LongPositions.Length < MaxLongPositions) &&
-                                    (nearLongPosition == null || Math.Abs(nearLongPosition.NetProfit / Symbol.PipValue) < DistanceBetweenPositionsInPips);
+                                    (nearLongPosition == null || Math.Abs(nearLongPosition.NetProfit / Symbol.PipSize) < DistanceBetweenPositionsInPips);
 
       var isShortPositionFarEnough = (ShortPositions.Length < MaxShortPositions) &&
-                                     (nearShortPosition == null || Math.Abs(nearShortPosition.NetProfit / Symbol.PipValue) < DistanceBetweenPositionsInPips);
+                                     (nearShortPosition == null || Math.Abs(nearShortPosition.NetProfit / Symbol.PipSize) < DistanceBetweenPositionsInPips);
 
       foreach (var o in PendingOrders) o.Cancel();
 
