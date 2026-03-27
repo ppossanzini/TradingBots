@@ -2,6 +2,7 @@ using cAlgo.API;
 using cAlgo.API.Internals;
 using cAlgo.API.Indicators;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace cAlgo.Robots
@@ -77,6 +78,9 @@ namespace cAlgo.Robots
 
     [Parameter("Max Dynamic Offset Pips", DefaultValue = 20, MinValue = 1, Group = "Triggering Offsets")]
     public double MaxDynamicOffsetPips { get; set; }
+
+    [Parameter("Distance between positions (pips)", Group = "Triggering Offsets", MinValue = 0, DefaultValue = 50)]
+    public double DistanceBetweenPositionsInPips { get; set; } = 50;
 
     #endregion
 
@@ -165,6 +169,15 @@ namespace cAlgo.Robots
         return;
       }
 
+      var nearLongPosition = FindNearestPosition(TradeType.Buy);
+      var nearShortPosition = FindNearestPosition(TradeType.Sell);
+
+      var isLongPositionFarEnough = (LongPositions.Length < MaxLongPositions) &&
+                                    (nearLongPosition == null || Math.Abs(nearLongPosition.NetProfit / Symbol.PipValue) < DistanceBetweenPositionsInPips);
+
+      var isShortPositionFarEnough = (ShortPositions.Length < MaxShortPositions) &&
+                                     (nearShortPosition == null || Math.Abs(nearShortPosition.NetProfit / Symbol.PipValue) < DistanceBetweenPositionsInPips);
+
       foreach (var o in PendingOrders) o.Cancel();
 
       var volumeInUnits = GetDynamicVolumeInUnits();
@@ -173,19 +186,33 @@ namespace cAlgo.Robots
       var buyPrice = Symbol.Ask + offsetPips * Symbol.PipSize;
       var sellPrice = Symbol.Bid - offsetPips * Symbol.PipSize;
 
-      if (OrderDirection == OrderDirectionMode.Both || OrderDirection == OrderDirectionMode.LongOnly)
-        if (LongPositions.Length < MaxLongPositions)
-          PlaceStopOrder(TradeType.Buy, SymbolName, volumeInUnits, buyPrice, Label,
-            null, TakeProfitPips);
+      switch (OrderDirection)
+      {
+        case OrderDirectionMode.Both when isLongPositionFarEnough :
+        case OrderDirectionMode.LongOnly when isLongPositionFarEnough :
 
+          PlaceStopOrder(TradeType.Buy, SymbolName, volumeInUnits, buyPrice, Label, null, TakeProfitPips); break;
 
-      if (OrderDirection == OrderDirectionMode.Both || OrderDirection == OrderDirectionMode.ShortOnly)
-        if (ShortPositions.Length < MaxShortPositions)
-          PlaceStopOrder(TradeType.Sell, SymbolName, volumeInUnits, sellPrice, Label, null,
-            TakeProfitPips);
+        case OrderDirectionMode.Both when isShortPositionFarEnough:
+        case OrderDirectionMode.ShortOnly when isShortPositionFarEnough:
+
+          PlaceLimitOrder(TradeType.Sell, SymbolName, volumeInUnits, sellPrice, Label, null, TakeProfitPips); break;
+      }
+
 
       Print("Pending aggiornati. Volume={0} units, Offset={1:F1} pips, Direzione={2}, BuyStop={3}, SellStop={4}",
         volumeInUnits, offsetPips, OrderDirection, buyPrice, sellPrice);
+    }
+
+    private Position FindNearestPosition(TradeType? operation)
+    {
+      var nearPosition = operation switch
+      {
+        TradeType.Buy => this.LongPositions.MinBy(p => Math.Abs(p.NetProfit / Symbol.PipValue)),
+        TradeType.Sell => this.ShortPositions.MinBy(p => Math.Abs(p.NetProfit / Symbol.PipValue)),
+        _ => null
+      };
+      return nearPosition;
     }
 
     private double GetDynamicVolumeInUnits()
