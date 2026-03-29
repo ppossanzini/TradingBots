@@ -54,6 +54,12 @@ namespace cAlgo.Robots
       Step = 1)]
     public int MaxShortPositions { get; set; }
 
+    [Parameter("Evaluationg Candles", DefaultValue = 500, MinValue = 1, Group = "Orders")]
+    public int EvaluationgCandles { get; set; } = 10;
+
+    [Parameter("Evaluating Range", DefaultValue = 20, MinValue = 1, Group = "Orders")]
+    public int EvaluatingRange { get; set; } = 20;
+
     #endregion
 
     #region Triggering Offsets
@@ -95,6 +101,12 @@ namespace cAlgo.Robots
     [Parameter("Trailing Distance Pips", DefaultValue = 8, MinValue = 1, Group = "Take Profit")]
     public double TrailingDistancePips { get; set; }
 
+    [Parameter("Break Even Trigger Pips", DefaultValue = 0.5, MinValue = 0, Group = "Take Profit")]
+    public double BrEvenTriggerPips { get; set; }
+
+    [Parameter("Break Event Distance Pips", DefaultValue = 0.1, MinValue = 0, Group = "Take Profit")]
+    public double BrEvenDistancePips { get; set; }
+    
     #endregion
 
 
@@ -132,6 +144,51 @@ namespace cAlgo.Robots
       UpdatePendingOrders();
     }
 
+    protected void ManageTrailing()
+    {
+      // 1. Recupera tutte le posizioni aperte dal bot
+      var hftPositions = Positions.Where(i => i.Label.StartsWith(PositionPrefix) && i.SymbolName== SymbolName);
+
+      foreach (var position in hftPositions)
+      {
+        // Calcoliamo il profitto in Pips netti (sottraendo le commissioni)
+        double netPips = position.Pips - (position.Commissions / (Symbol.PipValue * position.VolumeInUnits));
+
+        // 2. LOGICA BREAK-EVEN RAPIDO
+        // Se siamo in profitto di 0.5 pip netti, spostiamo lo stop a +0.1 (protezione capitale)
+        if (netPips >= BrEvenTriggerPips && position.StopLoss < position.EntryPrice)
+        {
+          var newStop = position.TradeType == TradeType.Buy
+            ? position.EntryPrice + (Symbol.PipSize * BrEvenDistancePips)
+            : position.EntryPrice - (Symbol.PipSize * BrEvenTriggerPips);
+
+          ModifyPosition(position, newStop, position.TakeProfit);
+          Print("Break-even attivato per {0}", position.Id);
+        }
+
+        // 3. TRAILING "SMART" (Asfissiante)
+        // Se il profitto sale oltre 1.2 pip, inseguiamo il prezzo a soli 0.3 pip di distanza
+        if (netPips > TrailingTriggerPips)
+        {
+          double trailingDistance = Symbol.PipSize * TrailingDistancePips;
+          double targetStop = position.TradeType == TradeType.Buy
+            ? Symbol.Bid - trailingDistance
+            : Symbol.Ask + trailingDistance;
+
+          // Muoviamo lo stop solo se migliora la posizione (non torniamo mai indietro)
+          if (position.TradeType == TradeType.Buy && targetStop > position.StopLoss)
+          {
+            ModifyPosition(position, targetStop, position.TakeProfit);
+          }
+          else if (position.TradeType == TradeType.Sell &&
+                   (targetStop < position.StopLoss || position.StopLoss == null))
+          {
+            ModifyPosition(position, targetStop, position.TakeProfit);
+          }
+        }
+      }
+    }
+
     protected override void OnTick()
     {
       if (IsFridayCloseTimeReached())
@@ -143,7 +200,8 @@ namespace cAlgo.Robots
         UpdatePendingOrders();
       }
 
-      ManageOpenPositions();
+      ManageTrailing();
+      //ManageOpenPositions();
     }
 
     protected override void OnPositionOpened(Position position)
@@ -169,14 +227,25 @@ namespace cAlgo.Robots
         return;
       }
 
+      var maxPriceInEvaluationRange = Bars.TakeLast(EvaluationgCandles).Max(i => Math.Max(i.Close, i.Open));
+      var minPriceInEvaluationRange = Bars.TakeLast(EvaluationgCandles).Max(i => Math.Min(i.Close, i.Open));
+
+      var deltarange = maxPriceInEvaluationRange - minPriceInEvaluationRange;
+      var minTreshold = minPriceInEvaluationRange + (deltarange * EvaluatingRange / 100);
+      var maxTreshold = maxPriceInEvaluationRange - (deltarange * EvaluatingRange / 100);
+
+
       var nearLongPosition = FindNearestPosition(TradeType.Buy);
       var nearShortPosition = FindNearestPosition(TradeType.Sell);
 
       var isLongPositionFarEnough = (LongPositions.Length < MaxLongPositions) &&
-                                    (nearLongPosition == null || Math.Abs(nearLongPosition.NetProfit / Symbol.PipSize) < DistanceBetweenPositionsInPips);
+                                    (nearLongPosition == null || Math.Abs(nearLongPosition.NetProfit / Symbol.PipSize) >
+                                      DistanceBetweenPositionsInPips) && Symbol.Ask < minTreshold;
 
       var isShortPositionFarEnough = (ShortPositions.Length < MaxShortPositions) &&
-                                     (nearShortPosition == null || Math.Abs(nearShortPosition.NetProfit / Symbol.PipSize) < DistanceBetweenPositionsInPips);
+                                     (nearShortPosition == null ||
+                                      Math.Abs(nearShortPosition.NetProfit / Symbol.PipSize) >
+                                      DistanceBetweenPositionsInPips && Symbol.Bid > maxTreshold);
 
       foreach (var o in PendingOrders) o.Cancel();
 
@@ -188,15 +257,17 @@ namespace cAlgo.Robots
 
       switch (OrderDirection)
       {
-        case OrderDirectionMode.Both when isLongPositionFarEnough :
-        case OrderDirectionMode.LongOnly when isLongPositionFarEnough :
+        case OrderDirectionMode.Both when isLongPositionFarEnough:
+        case OrderDirectionMode.LongOnly when isLongPositionFarEnough:
 
-          PlaceStopOrder(TradeType.Buy, SymbolName, volumeInUnits, buyPrice, Label, null, TakeProfitPips); break;
+          PlaceStopOrder(TradeType.Buy, SymbolName, volumeInUnits, buyPrice, $"{PositionPrefix}-{Label}", null,
+            TakeProfitPips); break;
 
         case OrderDirectionMode.Both when isShortPositionFarEnough:
         case OrderDirectionMode.ShortOnly when isShortPositionFarEnough:
 
-          PlaceLimitOrder(TradeType.Sell, SymbolName, volumeInUnits, sellPrice, Label, null, TakeProfitPips); break;
+          PlaceStopOrder(TradeType.Sell, SymbolName, volumeInUnits, sellPrice, $"{PositionPrefix}-{Label}", null,
+            TakeProfitPips); break;
       }
 
 
@@ -311,14 +382,14 @@ namespace cAlgo.Robots
               newStopLossPrice = trailingPrice;
           }
         }
-/*
-                if (newStopLossPrice.HasValue &&
-                    (!position.StopLoss.HasValue || Math.Abs(position.StopLoss.Value - newStopLossPrice.Value) > Symbol.PipSize / 10))
-                {
-                    ModifyPosition(position, newStopLossPrice, position.TakeProfit);
-                    Print("Posizione aggiornata. SL={0}, Pips={1:F1}", newStopLossPrice.Value, currentProfitPips);
-                }
-                */
+
+        if (newStopLossPrice.HasValue &&
+            (!position.StopLoss.HasValue ||
+             Math.Abs(position.StopLoss.Value - newStopLossPrice.Value) > Symbol.PipSize / 10))
+        {
+          ModifyPosition(position, newStopLossPrice, position.TakeProfit);
+          Print("Posizione aggiornata. SL={0}, Pips={1:F1}", newStopLossPrice.Value, currentProfitPips);
+        }
       }
     }
   }

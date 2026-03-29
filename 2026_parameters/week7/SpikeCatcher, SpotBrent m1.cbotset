@@ -1,0 +1,34 @@
+﻿{
+  "Chart": {
+    "Symbol": "SpotBrent",
+    "Period": "m1"
+  },
+  "Parameters": {
+    "Label": "PendingRecenterBot",
+    "PositionPrefix": "Spike Catcher",
+    "TradingStartTime": "00:00",
+    "TradingEndTime": "22:00",
+    "FridayCloseTime": "20:00",
+    "OrderDirection": 0,
+    "MinVolumeLots": 0.05,
+    "MaxVolumeLots": 1.0,
+    "MarginPercentDivider": 360.0,
+    "MaxLongPositions": 5,
+    "MaxShortPositions": 5,
+    "EvaluationgCandles": 600,
+    "EvaluatingRange": 23,
+    "MaxSpreadPips": 7.0,
+    "FixedOffsetPips": 100.0,
+    "UseDynamicOffset": false,
+    "AtrPeriod": 14,
+    "AtrMultiplier": 2.0,
+    "MinDynamicOffsetPips": 80.0,
+    "MaxDynamicOffsetPips": 150.0,
+    "DistanceBetweenPositionsInPips": 300.0,
+    "TakeProfitPips": 20.0,
+    "TrailingTriggerPips": 30.0,
+    "TrailingDistancePips": 30.0,
+    "BrEvenTriggerPips": 2.0,
+    "BrEvenDistancePips": 1.0
+  }
+}

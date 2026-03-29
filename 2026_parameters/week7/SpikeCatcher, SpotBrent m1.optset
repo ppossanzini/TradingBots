@@ -1,0 +1,454 @@
+﻿{
+  "parameters": [
+    {
+      "name": "c02b25309272471b89a4de3831c473c5",
+      "value": "m1",
+      "parameterType": "TimeFrame",
+      "metadata": null,
+      "optimize": false,
+      "values": [
+        "m1",
+        "m5"
+      ]
+    },
+    {
+      "name": "Label",
+      "value": "PendingRecenterBot",
+      "parameterType": "String",
+      "metadata": {
+        "defaultValue": "Spike Catcher",
+        "parameterType": "String",
+        "propertyName": "Label",
+        "friendlyName": "Label",
+        "groupName": null,
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "PositionPrefix",
+      "value": "Spike Catcher",
+      "parameterType": "String",
+      "metadata": {
+        "defaultValue": "Spike Catcher",
+        "parameterType": "String",
+        "propertyName": "PositionPrefix",
+        "friendlyName": "Position Prefix",
+        "groupName": null,
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "TradingStartTime",
+      "value": "00:00",
+      "parameterType": "String",
+      "metadata": {
+        "defaultValue": "08:00",
+        "parameterType": "String",
+        "propertyName": "TradingStartTime",
+        "friendlyName": "Trading Start Time",
+        "groupName": null,
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "TradingEndTime",
+      "value": "22:00",
+      "parameterType": "String",
+      "metadata": {
+        "defaultValue": "22:00",
+        "parameterType": "String",
+        "propertyName": "TradingEndTime",
+        "friendlyName": "Trading End Time",
+        "groupName": null,
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "FridayCloseTime",
+      "value": "20:00",
+      "parameterType": "String",
+      "metadata": {
+        "defaultValue": "20:00",
+        "parameterType": "String",
+        "propertyName": "FridayCloseTime",
+        "friendlyName": "Friday Close Time",
+        "groupName": null,
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "OrderDirection",
+      "value": "0",
+      "parameterType": "Enum",
+      "metadata": {
+        "enumValues": [
+          {
+            "value": 0,
+            "name": "Both"
+          },
+          {
+            "value": 1,
+            "name": "LongOnly"
+          },
+          {
+            "value": 2,
+            "name": "ShortOnly"
+          }
+        ],
+        "defaultValue": 0,
+        "parameterType": "Enum",
+        "propertyName": "OrderDirection",
+        "friendlyName": "Order Direction",
+        "groupName": "Orders",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": true,
+      "values": [
+        "0",
+        "1",
+        "2"
+      ]
+    },
+    {
+      "name": "MinVolumeLots",
+      "value": "0.01",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.01,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 0.01,
+        "parameterType": "Double",
+        "propertyName": "MinVolumeLots",
+        "friendlyName": "Min Volume (Lots)",
+        "groupName": "Orders",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "0.01",
+      "max": "0.51",
+      "step": "0.1"
+    },
+    {
+      "name": "MaxVolumeLots",
+      "value": "0.1",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.01,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 0.1,
+        "parameterType": "Double",
+        "propertyName": "MaxVolumeLots",
+        "friendlyName": "Max Volume (Lots)",
+        "groupName": "Orders",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "0.01",
+      "max": "0.6",
+      "step": "0.1"
+    },
+    {
+      "name": "MarginPercentDivider",
+      "value": "360",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.1,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 10.0,
+        "parameterType": "Double",
+        "propertyName": "MarginPercentDivider",
+        "friendlyName": "Margin Percent Divider",
+        "groupName": "Orders",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "10",
+      "max": "1000",
+      "step": "10"
+    },
+    {
+      "name": "MaxLongPositions",
+      "value": "3",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": 0,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 3,
+        "parameterType": "Integer",
+        "propertyName": "MaxLongPositions",
+        "friendlyName": "Max active long positions",
+        "groupName": "Orders",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": true,
+      "min": "0",
+      "max": "5",
+      "step": "1"
+    },
+    {
+      "name": "MaxShortPositions",
+      "value": "0",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": 0,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 0,
+        "parameterType": "Integer",
+        "propertyName": "MaxShortPositions",
+        "friendlyName": "Max active short positions",
+        "groupName": "Orders",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": true,
+      "min": "0",
+      "max": "5",
+      "step": "1"
+    },
+    {
+      "name": "MaxSpreadPips",
+      "value": "2",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.0,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 2.0,
+        "parameterType": "Double",
+        "propertyName": "MaxSpreadPips",
+        "friendlyName": "Max Spread Pips",
+        "groupName": "Triggering Offsets",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": true,
+      "min": "0",
+      "max": "4",
+      "step": "1"
+    },
+    {
+      "name": "FixedOffsetPips",
+      "value": "5",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 1.0,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 5.0,
+        "parameterType": "Double",
+        "propertyName": "FixedOffsetPips",
+        "friendlyName": "Fixed Offset Pips",
+        "groupName": "Triggering Offsets",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": true,
+      "min": "30",
+      "max": "60",
+      "step": "5"
+    },
+    {
+      "name": "UseDynamicOffset",
+      "value": "True",
+      "parameterType": "Boolean",
+      "metadata": {
+        "defaultValue": false,
+        "parameterType": "Boolean",
+        "propertyName": "UseDynamicOffset",
+        "friendlyName": "Use Dynamic Offset",
+        "groupName": "Triggering Offsets",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false
+    },
+    {
+      "name": "AtrPeriod",
+      "value": "14",
+      "parameterType": "Integer",
+      "metadata": {
+        "minValue": 1,
+        "maxValue": 2147483647,
+        "step": 1,
+        "defaultValue": 14,
+        "parameterType": "Integer",
+        "propertyName": "AtrPeriod",
+        "friendlyName": "ATR Period",
+        "groupName": "Triggering Offsets",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": false,
+      "min": "9",
+      "max": "19",
+      "step": "1"
+    },
+    {
+      "name": "AtrMultiplier",
+      "value": "2",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.1,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 1.0,
+        "parameterType": "Double",
+        "propertyName": "AtrMultiplier",
+        "friendlyName": "ATR Multiplier",
+        "groupName": "Triggering Offsets",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": true,
+      "min": "1",
+      "max": "2.5",
+      "step": "0.1"
+    },
+    {
+      "name": "MinDynamicOffsetPips",
+      "value": "6",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 1.0,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 3.0,
+        "parameterType": "Double",
+        "propertyName": "MinDynamicOffsetPips",
+        "friendlyName": "Min Dynamic Offset Pips",
+        "groupName": "Triggering Offsets",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": true,
+      "min": "40",
+      "max": "100",
+      "step": "5"
+    },
+    {
+      "name": "MaxDynamicOffsetPips",
+      "value": "20",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 1.0,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 20.0,
+        "parameterType": "Double",
+        "propertyName": "MaxDynamicOffsetPips",
+        "friendlyName": "Max Dynamic Offset Pips",
+        "groupName": "Triggering Offsets",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": true,
+      "min": "50",
+      "max": "200",
+      "step": "5"
+    },
+    {
+      "name": "DistanceBetweenPositionsInPips",
+      "value": "50",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 0.0,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 50.0,
+        "parameterType": "Double",
+        "propertyName": "DistanceBetweenPositionsInPips",
+        "friendlyName": "Distance between positions (pips)",
+        "groupName": "Triggering Offsets",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": true,
+      "min": "100",
+      "max": "1000",
+      "step": "50"
+    },
+    {
+      "name": "TakeProfitPips",
+      "value": "3",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 1.0,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 500.0,
+        "parameterType": "Double",
+        "propertyName": "TakeProfitPips",
+        "friendlyName": "Take Profit Pips",
+        "groupName": "Take Profit",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": true,
+      "min": "20",
+      "max": "500",
+      "step": "10"
+    },
+    {
+      "name": "TrailingTriggerPips",
+      "value": "10",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 1.0,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 20.0,
+        "parameterType": "Double",
+        "propertyName": "TrailingTriggerPips",
+        "friendlyName": "Trailing Trigger Pips",
+        "groupName": "Take Profit",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": true,
+      "min": "1",
+      "max": "50",
+      "step": "1"
+    },
+    {
+      "name": "TrailingDistancePips",
+      "value": "8",
+      "parameterType": "Double",
+      "metadata": {
+        "minValue": 1.0,
+        "maxValue": 1.7976931348623157E+308,
+        "step": 0.1,
+        "defaultValue": 8.0,
+        "parameterType": "Double",
+        "propertyName": "TrailingDistancePips",
+        "friendlyName": "Trailing Distance Pips",
+        "groupName": "Take Profit",
+        "isValueVisibleInTitle": true,
+        "description": ""
+      },
+      "optimize": true,
+      "min": "1",
+      "max": "50",
+      "step": "1"
+    }
+  ]
+}
