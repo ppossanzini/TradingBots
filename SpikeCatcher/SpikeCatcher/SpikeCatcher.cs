@@ -54,6 +54,9 @@ namespace cAlgo.Robots
       Step = 1)]
     public int MaxShortPositions { get; set; }
 
+    [Parameter("Timeframe to evaluate price directions", DefaultValue = 500, MinValue = 1, Group = "Orders")]
+    public TimeFrame EvaluatingTimeFrame { get; set; } = TimeFrame.Hour;
+
     [Parameter("Evaluationg Candles", DefaultValue = 500, MinValue = 1, Group = "Orders")]
     public int EvaluationgCandles { get; set; } = 10;
 
@@ -223,8 +226,10 @@ namespace cAlgo.Robots
         return;
       }
 
-      var maxPriceInEvaluationRange = Bars.TakeLast(EvaluationgCandles).Max(i => Math.Max(i.Close, i.Open));
-      var minPriceInEvaluationRange = Bars.TakeLast(EvaluationgCandles).Min(i => Math.Min(i.Close, i.Open));
+      var logtimebasrs = MarketData.GetBars(EvaluatingTimeFrame, SymbolName);
+
+      var maxPriceInEvaluationRange = logtimebasrs.TakeLast(EvaluationgCandles).Max(i => Math.Max(i.Close, i.Open));
+      var minPriceInEvaluationRange = logtimebasrs.TakeLast(EvaluationgCandles).Min(i => Math.Min(i.Close, i.Open));
 
       var deltarange = maxPriceInEvaluationRange - minPriceInEvaluationRange;
       var minTreshold = minPriceInEvaluationRange + (deltarange * EvaluatingRange / 100);
@@ -236,12 +241,12 @@ namespace cAlgo.Robots
 
       var isLongPositionFarEnough = (LongPositions.Length < MaxLongPositions) &&
                                     (nearLongPosition == null || Math.Abs(nearLongPosition.NetProfit / Symbol.PipSize) >
-                                      DistanceBetweenPositionsInPips) && Symbol.Ask < minTreshold;
+                                      DistanceBetweenPositionsInPips) && Symbol.Ask < maxTreshold;
 
       var isShortPositionFarEnough = (ShortPositions.Length < MaxShortPositions) &&
                                      (nearShortPosition == null ||
                                       Math.Abs(nearShortPosition.NetProfit / Symbol.PipSize) >
-                                      DistanceBetweenPositionsInPips && Symbol.Bid > maxTreshold);
+                                      DistanceBetweenPositionsInPips && Symbol.Bid > minTreshold);
 
       foreach (var o in PendingOrders.Where(p => p.Label.StartsWith(PositionPrefix) && p.SymbolName == SymbolName ) ) o.Cancel();
 
