@@ -178,7 +178,7 @@ namespace cAlgo.Robots
           switch (position.TradeType)
           {
             case TradeType.Buy when ( position.StopLoss == null || targetStop > position.StopLoss ):
-            case TradeType.Sell when (position.StopLoss == null || targetStop < position.StopLoss  ): 
+            case TradeType.Sell when (position.StopLoss == null || targetStop < position.StopLoss  ):
               ModifyPosition(position, targetStop, null, ProtectionType.Absolute); break;
           }
         }
@@ -243,7 +243,7 @@ namespace cAlgo.Robots
                                       Math.Abs(nearShortPosition.NetProfit / Symbol.PipSize) >
                                       DistanceBetweenPositionsInPips && Symbol.Bid > maxTreshold);
 
-      foreach (var o in PendingOrders) o.Cancel();
+      foreach (var o in PendingOrders.Where(p => p.Label.StartsWith(PositionPrefix) && p.SymbolName == SymbolName ) ) o.Cancel();
 
       var volumeInUnits = GetDynamicVolumeInUnits();
       var offsetPips = GetCurrentOffsetPips();
