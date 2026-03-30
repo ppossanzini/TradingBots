@@ -224,7 +224,7 @@ namespace cAlgo.Robots
       }
 
       var maxPriceInEvaluationRange = Bars.TakeLast(EvaluationgCandles).Max(i => Math.Max(i.Close, i.Open));
-      var minPriceInEvaluationRange = Bars.TakeLast(EvaluationgCandles).Max(i => Math.Min(i.Close, i.Open));
+      var minPriceInEvaluationRange = Bars.TakeLast(EvaluationgCandles).Min(i => Math.Min(i.Close, i.Open));
 
       var deltarange = maxPriceInEvaluationRange - minPriceInEvaluationRange;
       var minTreshold = minPriceInEvaluationRange + (deltarange * EvaluatingRange / 100);
