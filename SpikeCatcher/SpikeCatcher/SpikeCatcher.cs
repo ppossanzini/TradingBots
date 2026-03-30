@@ -193,7 +193,7 @@ namespace cAlgo.Robots
       }
     }
 
-    protected override void OnTick()
+    protected override void OnBar()
     {
       if (IsFridayCloseTimeReached())
         CloseFridayPositions();
