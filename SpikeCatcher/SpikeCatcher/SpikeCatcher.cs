@@ -106,7 +106,7 @@ namespace cAlgo.Robots
 
     [Parameter("Break Event Distance Pips", DefaultValue = 0.1, MinValue = 0, Group = "Take Profit")]
     public double BrEvenDistancePips { get; set; }
-    
+
     #endregion
 
 
@@ -147,7 +147,7 @@ namespace cAlgo.Robots
     protected void ManageTrailing()
     {
       // 1. Recupera tutte le posizioni aperte dal bot
-      var hftPositions = Positions.Where(i => i.Label.StartsWith(PositionPrefix) && i.SymbolName== SymbolName);
+      var hftPositions = Positions.Where(i => i.Label.StartsWith(PositionPrefix) && i.SymbolName == SymbolName);
 
       foreach (var position in hftPositions)
       {
@@ -156,13 +156,13 @@ namespace cAlgo.Robots
 
         // 2. LOGICA BREAK-EVEN RAPIDO
         // Se siamo in profitto di 0.5 pip netti, spostiamo lo stop a +0.1 (protezione capitale)
-        if (netPips >= BrEvenTriggerPips && position.StopLoss < position.EntryPrice)
+        if (netPips >= BrEvenTriggerPips && (position.StopLoss == null || position.StopLoss < position.EntryPrice))
         {
           var newStop = position.TradeType == TradeType.Buy
             ? position.EntryPrice + (Symbol.PipSize * BrEvenDistancePips)
             : position.EntryPrice - (Symbol.PipSize * BrEvenTriggerPips);
 
-          ModifyPosition(position, newStop, position.TakeProfit);
+          ModifyPosition(position, newStop, position.TakeProfit, ProtectionType.Absolute);
           Print("Break-even attivato per {0}", position.Id);
         }
 
@@ -175,15 +175,11 @@ namespace cAlgo.Robots
             ? Symbol.Bid - trailingDistance
             : Symbol.Ask + trailingDistance;
 
-          // Muoviamo lo stop solo se migliora la posizione (non torniamo mai indietro)
-          if (position.TradeType == TradeType.Buy && targetStop > position.StopLoss)
+          switch (position.TradeType)
           {
-            ModifyPosition(position, targetStop, position.TakeProfit);
-          }
-          else if (position.TradeType == TradeType.Sell &&
-                   (targetStop < position.StopLoss || position.StopLoss == null))
-          {
-            ModifyPosition(position, targetStop, position.TakeProfit);
+            case TradeType.Buy when ( position.StopLoss == null || targetStop > position.StopLoss ):
+            case TradeType.Sell when (position.StopLoss == null || targetStop < position.StopLoss  ): 
+              ModifyPosition(position, targetStop, null, ProtectionType.Absolute); break;
           }
         }
       }
