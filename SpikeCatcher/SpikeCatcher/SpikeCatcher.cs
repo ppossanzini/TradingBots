@@ -162,8 +162,8 @@ namespace cAlgo.Robots
         if (netPips >= BrEvenTriggerPips && (position.StopLoss == null || position.StopLoss < position.EntryPrice))
         {
           var newStop = position.TradeType == TradeType.Buy
-            ? position.EntryPrice + (Symbol.PipSize * BrEvenDistancePips)
-            : position.EntryPrice - (Symbol.PipSize * BrEvenTriggerPips);
+            ? position.EntryPrice + (Symbol.PipSize * Math.Min(BrEvenDistancePips , BrEvenTriggerPips))
+            : position.EntryPrice - (Symbol.PipSize * Math.Min(BrEvenDistancePips , BrEvenTriggerPips));
 
           ModifyPosition(position, newStop, position.TakeProfit, ProtectionType.Absolute);
           Print("Break-even attivato per {0}", position.Id);
@@ -173,7 +173,7 @@ namespace cAlgo.Robots
         // Se il profitto sale oltre 1.2 pip, inseguiamo il prezzo a soli 0.3 pip di distanza
         if (netPips > TrailingTriggerPips)
         {
-          double trailingDistance = Symbol.PipSize * TrailingDistancePips;
+          double trailingDistance = ( Math.Min(TrailingTriggerPips , TrailingDistancePips) * Symbol.PipSize);
           double targetStop = position.TradeType == TradeType.Buy
             ? Symbol.Bid - trailingDistance
             : Symbol.Ask + trailingDistance;
@@ -372,13 +372,13 @@ namespace cAlgo.Robots
         {
           if (position.TradeType == TradeType.Buy)
           {
-            var trailingPrice = Symbol.Bid - TrailingDistancePips * Symbol.PipSize;
+            var trailingPrice = Symbol.Bid - ( (TrailingTriggerPips + TrailingDistancePips) * Symbol.PipSize);
             if (!position.StopLoss.HasValue || trailingPrice > position.StopLoss.Value)
               newStopLossPrice = trailingPrice;
           }
           else if (position.TradeType == TradeType.Sell)
           {
-            var trailingPrice = Symbol.Ask + TrailingDistancePips * Symbol.PipSize;
+            var trailingPrice = Symbol.Ask + ( (TrailingTriggerPips + TrailingDistancePips) * Symbol.PipSize);
             if (!position.StopLoss.HasValue || trailingPrice < position.StopLoss.Value)
               newStopLossPrice = trailingPrice;
           }
