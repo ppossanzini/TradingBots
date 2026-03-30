@@ -278,6 +278,7 @@ namespace cAlgo.Robots
             if(newSlPrice < pos.StopLoss) continue;
             
             pos.ModifyStopLossPrice(newSlPrice);
+            pos.ModifyStopLossPrice(null); //  Rimuovo il take profit per far correre il prezzo
           }
 
           break;
@@ -295,6 +296,7 @@ namespace cAlgo.Robots
             
             // Non attivo il trailing stop nativo ma calcolo io ad ogni tick se devo fare qualcosa. 
             pos.ModifyStopLossPrice(newSlPrice);
+            pos.ModifyTakeProfitPips(null); //  Rimuovo il take profit per far correre il prezzo
           }
 
           break;
@@ -310,6 +312,7 @@ namespace cAlgo.Robots
             if(newprice < pos.EntryPrice) continue;
             if(newprice < pos.StopLoss) continue;
             pos.ModifyStopLossPrice(newprice);
+            pos.ModifyTakeProfitPips(null);//  Rimuovo il take profit per far correre il prezzo
           }
 
           break;
