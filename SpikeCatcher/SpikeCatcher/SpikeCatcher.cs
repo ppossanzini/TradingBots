@@ -95,7 +95,7 @@ namespace cAlgo.Robots
 
     #region Take Profit
 
-    [Parameter("Take Profit Pips", DefaultValue = 500, MinValue = 1, Group = "Take Profit")]
+    [Parameter("Take Profit Pips", DefaultValue = 500, MinValue = 0, Group = "Take Profit")]
     public double TakeProfitPips { get; set; }
 
     [Parameter("Trailing Trigger Pips", DefaultValue = 20, MinValue = 1, Group = "Take Profit")]
@@ -103,6 +103,9 @@ namespace cAlgo.Robots
 
     [Parameter("Trailing Distance Pips", DefaultValue = 8, MinValue = 1, Group = "Take Profit")]
     public double TrailingDistancePips { get; set; }
+
+    [Parameter("StopLoss Distance Pips", DefaultValue = 8, MinValue = 0, Group = "Take Profit")]
+    public double StopLossPips { get; set; }
 
     [Parameter("Break Even Trigger Pips", DefaultValue = 0.5, MinValue = 0, Group = "Take Profit")]
     public double BrEvenTriggerPips { get; set; }
@@ -159,11 +162,12 @@ namespace cAlgo.Robots
 
         // 2. LOGICA BREAK-EVEN RAPIDO
         // Se siamo in profitto di 0.5 pip netti, spostiamo lo stop a +0.1 (protezione capitale)
-        if (netPips >= BrEvenTriggerPips && (position.StopLoss == null || position.StopLoss < position.EntryPrice))
+        if (netPips >= BrEvenTriggerPips && (position.TradeType == TradeType.Buy &&  (position.StopLoss == null || position.StopLoss < position.EntryPrice)) ||
+            (position.TradeType == TradeType.Sell && (position.StopLoss == null || position.StopLoss > position.EntryPrice)))
         {
           var newStop = position.TradeType == TradeType.Buy
-            ? position.EntryPrice + (Symbol.PipSize * Math.Min(BrEvenDistancePips , BrEvenTriggerPips))
-            : position.EntryPrice - (Symbol.PipSize * Math.Min(BrEvenDistancePips , BrEvenTriggerPips));
+            ? position.EntryPrice + (Symbol.PipSize * Math.Min(BrEvenDistancePips, BrEvenTriggerPips))
+            : position.EntryPrice - (Symbol.PipSize * Math.Min(BrEvenDistancePips, BrEvenTriggerPips));
 
           ModifyPosition(position, newStop, position.TakeProfit, ProtectionType.Absolute);
           Print("Break-even attivato per {0}", position.Id);
@@ -173,15 +177,16 @@ namespace cAlgo.Robots
         // Se il profitto sale oltre 1.2 pip, inseguiamo il prezzo a soli 0.3 pip di distanza
         if (netPips > TrailingTriggerPips)
         {
-          double trailingDistance = ( Math.Min(TrailingTriggerPips , TrailingDistancePips) * Symbol.PipSize);
+          double trailingDistance = (Math.Min(TrailingTriggerPips, TrailingDistancePips) * Symbol.PipSize);
           double targetStop = position.TradeType == TradeType.Buy
             ? Symbol.Bid - trailingDistance
             : Symbol.Ask + trailingDistance;
 
           switch (position.TradeType)
           {
-            case TradeType.Buy when ( position.StopLoss == null || targetStop > position.StopLoss ):
-            case TradeType.Sell when (position.StopLoss == null || targetStop < position.StopLoss  ):
+            case TradeType.Buy when (position.StopLoss == null || targetStop > position.StopLoss):
+              ModifyPosition(position, targetStop, null, ProtectionType.Absolute); break;
+            case TradeType.Sell when (position.StopLoss == null || targetStop < position.StopLoss):
               ModifyPosition(position, targetStop, null, ProtectionType.Absolute); break;
           }
         }
@@ -248,7 +253,7 @@ namespace cAlgo.Robots
                                       Math.Abs(nearShortPosition.NetProfit / Symbol.PipSize) >
                                       DistanceBetweenPositionsInPips && Symbol.Bid > minTreshold);
 
-      foreach (var o in PendingOrders.Where(p => p.Label.StartsWith(PositionPrefix) && p.SymbolName == SymbolName ) ) o.Cancel();
+      foreach (var o in PendingOrders.Where(p => p.Label.StartsWith(PositionPrefix) && p.SymbolName == SymbolName)) o.Cancel();
 
       var volumeInUnits = GetDynamicVolumeInUnits();
       var offsetPips = GetCurrentOffsetPips();
@@ -261,13 +266,13 @@ namespace cAlgo.Robots
         case OrderDirectionMode.Both when isLongPositionFarEnough:
         case OrderDirectionMode.LongOnly when isLongPositionFarEnough:
 
-          PlaceStopOrder(TradeType.Buy, SymbolName, volumeInUnits, buyPrice, $"{PositionPrefix}-{Label}", null,
+          PlaceStopOrder(TradeType.Buy, SymbolName, volumeInUnits, buyPrice, $"{PositionPrefix}-{Label}", StopLossPips ==0 ? null : StopLossPips,
             TakeProfitPips); break;
 
         case OrderDirectionMode.Both when isShortPositionFarEnough:
         case OrderDirectionMode.ShortOnly when isShortPositionFarEnough:
 
-          PlaceStopOrder(TradeType.Sell, SymbolName, volumeInUnits, sellPrice, $"{PositionPrefix}-{Label}", null,
+          PlaceStopOrder(TradeType.Sell, SymbolName, volumeInUnits, sellPrice, $"{PositionPrefix}-{Label}", StopLossPips ==0 ? null : StopLossPips,
             TakeProfitPips); break;
       }
 
@@ -355,43 +360,5 @@ namespace cAlgo.Robots
       return dynamicOffset;
     }
 
-    private void ManageOpenPositions()
-    {
-      var positions = Positions.Where(p => p.SymbolName == SymbolName && p.Label == Label).ToArray();
-
-      if (positions.Length == 0)
-        return;
-
-
-      foreach (var position in positions)
-      {
-        var currentProfitPips = position.Pips;
-        double? newStopLossPrice = position.StopLoss;
-
-        if (currentProfitPips >= TrailingTriggerPips)
-        {
-          if (position.TradeType == TradeType.Buy)
-          {
-            var trailingPrice = Symbol.Bid - ( (TrailingTriggerPips + TrailingDistancePips) * Symbol.PipSize);
-            if (!position.StopLoss.HasValue || trailingPrice > position.StopLoss.Value)
-              newStopLossPrice = trailingPrice;
-          }
-          else if (position.TradeType == TradeType.Sell)
-          {
-            var trailingPrice = Symbol.Ask + ( (TrailingTriggerPips + TrailingDistancePips) * Symbol.PipSize);
-            if (!position.StopLoss.HasValue || trailingPrice < position.StopLoss.Value)
-              newStopLossPrice = trailingPrice;
-          }
-        }
-
-        if (newStopLossPrice.HasValue &&
-            (!position.StopLoss.HasValue ||
-             Math.Abs(position.StopLoss.Value - newStopLossPrice.Value) > Symbol.PipSize / 10))
-        {
-          ModifyPosition(position, newStopLossPrice, position.TakeProfit);
-          Print("Posizione aggiornata. SL={0}, Pips={1:F1}", newStopLossPrice.Value, currentProfitPips);
-        }
-      }
-    }
   }
 }
