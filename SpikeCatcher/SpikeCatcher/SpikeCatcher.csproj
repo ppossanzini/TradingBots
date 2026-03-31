@@ -6,4 +6,8 @@
   <ItemGroup>
     <PackageReference Include="cTrader.Automate" Version="*" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="SpikeCatcher, SpotBrent m1.cbotset" />
+  </ItemGroup>
 </Project>

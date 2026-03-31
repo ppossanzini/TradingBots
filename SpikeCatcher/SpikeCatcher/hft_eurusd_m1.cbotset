@@ -1,0 +1,39 @@
+{
+  "Chart": {
+    "Symbol": "EURUSD",
+    "Period": "m1"
+  },
+  "Parameters": {
+    "Label": "SpikeCatcher-HFT",
+    "PositionPrefix": "Spike Catcher",
+    "TradingStartTime": "07:00",
+    "TradingEndTime": "17:00",
+    "FridayCloseTime": "16:30",
+    "OrderDirection": 0,
+    "MinVolumeLots": 0.01,
+    "MaxVolumeLots": 0.10,
+    "MarginPercentDivider": 15.0,
+    "MaxLongPositions": 5,
+    "MaxShortPositions": 5,
+    "EvaluationgCandles": 60,
+    "EvaluatingRange": 15,
+    "MaxSpreadPips": 1.0,
+    "FixedOffsetPips": 3.0,
+    "UseDynamicOffset": true,
+    "AtrPeriod": 7,
+    "AtrMultiplier": 0.4,
+    "MinDynamicOffsetPips": 2.0,
+    "MaxDynamicOffsetPips": 8.0,
+    "DistanceBetweenPositionsInPips": 5.0,
+    "MinAtrFilterPips": 2.0,
+    "BreakoutConfirmationPips": 0.5,
+    "MinCandleBodyPercent": 35.0,
+    "CooldownBars": 1,
+    "TakeProfitPips": 5.0,
+    "TrailingTriggerPips": 3.0,
+    "TrailingDistancePips": 2.0,
+    "StopLossPips": 6.0,
+    "BrEvenTriggerPips": 2.0,
+    "BrEvenDistancePips": 0.5
+  }
+}

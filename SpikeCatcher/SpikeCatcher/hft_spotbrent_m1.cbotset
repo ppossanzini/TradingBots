@@ -1,0 +1,39 @@
+{
+  "Chart": {
+    "Symbol": "SpotBrent",
+    "Period": "m1"
+  },
+  "Parameters": {
+    "Label": "SpikeCatcher-HFT",
+    "PositionPrefix": "Spike Catcher",
+    "TradingStartTime": "08:00",
+    "TradingEndTime": "21:00",
+    "FridayCloseTime": "20:00",
+    "OrderDirection": 0,
+    "MinVolumeLots": 0.01,
+    "MaxVolumeLots": 0.05,
+    "MarginPercentDivider": 20.0,
+    "MaxLongPositions": 5,
+    "MaxShortPositions": 5,
+    "EvaluationgCandles": 30,
+    "EvaluatingRange": 15,
+    "MaxSpreadPips": 3.0,
+    "FixedOffsetPips": 5.0,
+    "UseDynamicOffset": true,
+    "AtrPeriod": 7,
+    "AtrMultiplier": 0.5,
+    "MinDynamicOffsetPips": 3.0,
+    "MaxDynamicOffsetPips": 15.0,
+    "DistanceBetweenPositionsInPips": 8.0,
+    "MinAtrFilterPips": 3.0,
+    "BreakoutConfirmationPips": 1.0,
+    "MinCandleBodyPercent": 40.0,
+    "CooldownBars": 1,
+    "TakeProfitPips": 8.0,
+    "TrailingTriggerPips": 5.0,
+    "TrailingDistancePips": 3.0,
+    "StopLossPips": 10.0,
+    "BrEvenTriggerPips": 3.0,
+    "BrEvenDistancePips": 1.0
+  }
+}
