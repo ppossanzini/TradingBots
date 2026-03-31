@@ -273,7 +273,7 @@ namespace cAlgo.Robots
             if (newSlPrice < pos.StopLoss) continue;
 
             pos.ModifyStopLossPrice(newSlPrice);
-            pos.ModifyStopLossPrice(null); //  Rimuovo il take profit per far correre il prezzo
+            pos.ModifyTakeProfitPips(null); //  Rimuovo il take profit per far correre il prezzo
           }
 
           break;
