@@ -70,6 +70,8 @@ namespace cAlgo.Robots
 
     [Parameter("StopLoss Distance Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
     public double StopLossPips { get; set; }
+    
+    public double StopLossTriggerPips { get; set; }
 
     #endregion
 
@@ -173,12 +175,12 @@ namespace cAlgo.Robots
       var volumeInUnits = GetDynamicVolumeInUnits();
 
       if (canGoLong && _longOrder is null)
-        PlaceStopLimitOrderAsync(TradeType.Buy, SymbolName, volumeInUnits, GetBuyPrice, LimitRangePips, Label, StopLossPips, null, ProtectionType.Relative,
+        PlaceStopLimitOrderAsync(TradeType.Buy, SymbolName, volumeInUnits, GetBuyPrice, LimitRangePips, Label, null, null, ProtectionType.None,
           null,
           null, true, r => { _longOrder = r.PendingOrder; });
 
       if (canGoShort && _shortOrder is null)
-        PlaceStopLimitOrderAsync(TradeType.Sell, SymbolName, volumeInUnits, GetSellPrice, LimitRangePips, Label, StopLossPips, null, ProtectionType.Relative,
+        PlaceStopLimitOrderAsync(TradeType.Sell, SymbolName, volumeInUnits, GetSellPrice, LimitRangePips, Label, null, null, ProtectionType.None,
           null,
           null, true, r => { _shortOrder = r.PendingOrder; });
     }
