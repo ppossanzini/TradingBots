@@ -70,7 +70,11 @@ namespace cAlgo.Robots
 
     [Parameter("StopLoss Distance Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
     public double StopLossPips { get; set; }
-    
+
+    [Parameter("TakeProfit Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
+    public double TakeProfitPips { get; set; }
+
+    [Parameter("StopLoss Trigger Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
     public double StopLossTriggerPips { get; set; }
 
     #endregion
@@ -124,6 +128,7 @@ namespace cAlgo.Robots
     protected override void OnTick()
     {
       base.OnTick();
+      EvaluateTrailingStop();
       MoveOrders();
     }
 
@@ -134,6 +139,20 @@ namespace cAlgo.Robots
 
 
       CreatePendingOrders(LongPositions.Length < MaxLongPositions, ShortPositions.Length < MaxShortPositions);
+    }
+
+    private void EvaluateTrailingStop()
+    {
+      foreach (var position in Positions)
+      {
+        if (position.SymbolName != SymbolName || position.Label != Label) continue;
+        if (position.HasTrailingStop) continue;
+        if (position.NetProfit < 0 || position.NetProfit < StopLossTriggerPips * Symbol.PipValue) continue;
+
+        position.ModifyStopLossPips(StopLossPips);
+        position.ModifyTrailingStop(true);
+        position.ModifyTakeProfitPips(null);
+      }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -177,12 +196,20 @@ namespace cAlgo.Robots
       if (canGoLong && _longOrder is null)
         PlaceStopLimitOrderAsync(TradeType.Buy, SymbolName, volumeInUnits, GetBuyPrice, LimitRangePips, Label, null, null, ProtectionType.None,
           null,
-          null, true, r => { _longOrder = r.PendingOrder; });
+          null, true, r =>
+          {
+            _longOrder = r.PendingOrder;
+            if (!r.IsSuccessful) Print($"Error placing LONG StopLimitOrder : {r.Error.ToString()}");
+          });
 
       if (canGoShort && _shortOrder is null)
         PlaceStopLimitOrderAsync(TradeType.Sell, SymbolName, volumeInUnits, GetSellPrice, LimitRangePips, Label, null, null, ProtectionType.None,
           null,
-          null, true, r => { _shortOrder = r.PendingOrder; });
+          null, true, r =>
+          {
+            _shortOrder = r.PendingOrder;
+            if (!r.IsSuccessful) Print($"Error placing SHORT StopLimitOrder : {r.Error.ToString()}");
+          });
     }
 
 
