@@ -116,7 +116,7 @@ namespace cAlgo.Robots
     private double GetSellPrice
     {
       [MethodImpl(MethodImplOptions.AggressiveInlining)]
-      get => Symbol.Ask + FixedOffsetPips * Symbol.PipSize;
+      get => Symbol.Bid - FixedOffsetPips * Symbol.PipSize;
     }
 
     protected override void OnStart()
@@ -168,10 +168,12 @@ namespace cAlgo.Robots
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void SearchForPendingOrders()
     {
+      _longOrder = null;
       _longOrder = PendingOrders.FirstOrDefault(i => i.SymbolName == SymbolName &&
                                                      i.TradeType == TradeType.Buy &&
                                                      i.Label == Label);
 
+      _shortOrder = null;
       _shortOrder = PendingOrders.FirstOrDefault(i => i.SymbolName == SymbolName &&
                                                       i.TradeType == TradeType.Sell &&
                                                       i.Label == Label);
@@ -194,22 +196,23 @@ namespace cAlgo.Robots
       var volumeInUnits = GetDynamicVolumeInUnits();
 
       if (canGoLong && _longOrder is null)
-        PlaceStopLimitOrderAsync(TradeType.Buy, SymbolName, volumeInUnits, GetBuyPrice, LimitRangePips, Label, null, null, ProtectionType.None,
-          null,
-          null, true, r =>
+        PlaceStopLimitOrderAsync(TradeType.Buy, SymbolName, volumeInUnits, GetBuyPrice, LimitRangePips, Label, null, TakeProfitPips, null, null, null, false,
+          r =>
           {
-            _longOrder = r.PendingOrder;
-            if (!r.IsSuccessful) Print($"Error placing LONG StopLimitOrder : {r.Error.ToString()}");
+            if (r.IsSuccessful)
+              _longOrder = r.PendingOrder;
+            else
+              Print($"Error placing LONG StopLimitOrder : {r.Error.ToString()}");
           });
 
       if (canGoShort && _shortOrder is null)
-        PlaceStopLimitOrderAsync(TradeType.Sell, SymbolName, volumeInUnits, GetSellPrice, LimitRangePips, Label, null, null, ProtectionType.None,
-          null,
-          null, true, r =>
-          {
+        PlaceStopLimitOrderAsync(TradeType.Sell, SymbolName, volumeInUnits, GetSellPrice, LimitRangePips, Label, null, TakeProfitPips, null, null, null, false, r =>
+        {
+          if (r.IsSuccessful)
             _shortOrder = r.PendingOrder;
-            if (!r.IsSuccessful) Print($"Error placing SHORT StopLimitOrder : {r.Error.ToString()}");
-          });
+          else
+            Print($"Error placing SHORT StopLimitOrder : {r.Error.ToString()}");
+        });
     }
 
 
