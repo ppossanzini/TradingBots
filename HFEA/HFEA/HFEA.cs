@@ -77,8 +77,8 @@ namespace cAlgo.Robots
     [Parameter("TakeProfit Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
     public double TakeProfitPips { get; set; }
 
-    [Parameter("StopLoss Trigger Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
-    public double StopLossTriggerPips { get; set; }
+    [Parameter("Trailing Trigger Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
+    public double TrailingTriggerPips { get; set; }
 
     #endregion
 
@@ -152,9 +152,9 @@ namespace cAlgo.Robots
       {
         if (position.SymbolName != SymbolName || position.Label != Label) continue;
         if (position.HasTrailingStop) continue;
-        if (position.NetProfit < 0 || position.NetProfit < StopLossTriggerPips * Symbol.PipValue) continue;
+        if (position.NetProfit < 0 || position.NetProfit < TrailingTriggerPips * Symbol.PipValue) continue;
 
-        position.ModifyStopLossPips(StopLossPips);
+        position.ModifyStopLossPips(TrailingTriggerPips);
         position.ModifyTrailingStop(true);
         position.ModifyTakeProfitPips(null);
       }
@@ -201,7 +201,7 @@ namespace cAlgo.Robots
       var volumeInUnits = GetDynamicVolumeInUnits();
 
       if (canGoLong && _longOrder is null)
-        PlaceStopLimitOrderAsync(TradeType.Buy, SymbolName, volumeInUnits, GetBuyPrice, LimitRangePips, Label, null, TakeProfitPips, null, null, null, false,
+        PlaceStopLimitOrderAsync(TradeType.Buy, SymbolName, volumeInUnits, GetBuyPrice, LimitRangePips, Label, StopLossPips, TakeProfitPips, null, null, null, false,
           r =>
           {
             if (r.IsSuccessful)
@@ -211,7 +211,7 @@ namespace cAlgo.Robots
           });
 
       if (canGoShort && _shortOrder is null)
-        PlaceStopLimitOrderAsync(TradeType.Sell, SymbolName, volumeInUnits, GetSellPrice, LimitRangePips, Label, null, TakeProfitPips, null, null, null, false, r =>
+        PlaceStopLimitOrderAsync(TradeType.Sell, SymbolName, volumeInUnits, GetSellPrice, LimitRangePips, Label, StopLossPips, TakeProfitPips, null, null, null, false, r =>
         {
           if (r.IsSuccessful)
             _shortOrder = r.PendingOrder;
