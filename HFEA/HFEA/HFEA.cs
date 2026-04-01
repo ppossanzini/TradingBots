@@ -33,6 +33,9 @@ namespace cAlgo.Robots
     [Parameter("Friday Close Time", DefaultValue = "20:00")]
     public string FridayCloseTime { get; set; }
 
+    [Parameter("Timer Interval in seconds", DefaultValue = "30")]
+    public int TimerInterval { get; set; } = 30;
+    
     #region Market Sizing
 
     [Parameter("Order Direction", DefaultValue = OrderDirectionMode.Both, Group = "Orders")]
@@ -123,11 +126,13 @@ namespace cAlgo.Robots
     {
       base.OnStart();
       Positions.Opened += args => SearchForPendingOrders();
+      
+      Timer.Start(TimeSpan.FromSeconds(TimerInterval));
     }
 
-    protected override void OnTick()
+    protected override void OnTimer()
     {
-      base.OnTick();
+      base.OnTimer();
       EvaluateTrailingStop();
       MoveOrders();
     }
