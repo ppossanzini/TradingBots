@@ -36,6 +36,9 @@ namespace cAlgo.Robots
     [Parameter("Timer Interval in seconds", DefaultValue = "30")]
     public int TimerInterval { get; set; } = 30;
 
+    [Parameter("Losing position Time to Live in minutes", DefaultValue = "3")]
+    public int TimeToLive { get; set; } = 180;
+
     #region Market Sizing
 
     [Parameter("Order Direction", DefaultValue = OrderDirectionMode.Both, Group = "Orders")]
@@ -82,17 +85,23 @@ namespace cAlgo.Robots
 
     [Parameter("Trailing Distance Margin Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
     public double TrailingDistancePips { get; set; }
-    
+
     [Parameter("Distance Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
     public double MinDistancePips { get; set; }
-    
+
+    [Parameter("Profit Distance Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
+    public double ProfitDistancePips { get; set; }
+
+    [Parameter("MinTickVolume", DefaultValue = 30, MinValue = 0, Group = "Pending Positions")]
+    public int MinTickVolume { get; set; }
     #endregion
 
     string Label => $"{PositionPrefix}-{PositionSuffix}";
 
     private PendingOrder _shortOrder = null;
     private PendingOrder _longOrder = null;
-
+    private Bar _currentBar;
+    
     private Position[] ShortPositions
     {
       get
@@ -150,17 +159,34 @@ namespace cAlgo.Robots
     protected override void OnTimer()
     {
       base.OnTimer();
-      EvaluateTrailingStop();
+      CloseLoosingPositions();
       MoveOrders();
     }
 
-    protected override void OnBar()
+    protected override void OnTick()
+    {
+      EvaluateTrailingStop();
+    }
+
+    protected override void OnBar() 
     {
       if (IsFridayCloseTimeReached())
         CloseFridayPositions();
 
+      _currentBar = Bars.Last(1);
 
       CreatePendingOrders(LongPositions.Length < MaxLongPositions, ShortPositions.Length < MaxShortPositions);
+    }
+
+    private void CloseLoosingPositions()
+    {
+      foreach (var position in Positions)
+      {
+        if (position.SymbolName != SymbolName || position.Label != Label || position.NetProfit > 0) continue;
+
+        if (position.EntryTime.AddMinutes(TimeToLive) < Server.Time)
+          position.Close();
+      }
     }
 
     private void EvaluateTrailingStop()
@@ -171,7 +197,14 @@ namespace cAlgo.Robots
         if (position.HasTrailingStop) continue;
         if (position.NetProfit < 0 || position.NetProfit < TrailingTriggerPips * Symbol.PipValue) continue;
 
-        position.ModifyStopLossPips(TrailingTriggerPips- TrailingDistancePips);
+        var price = position.TradeType switch
+        {
+          TradeType.Buy => Symbol.Bid - TrailingDistancePips * Symbol.PipValue,
+          TradeType.Sell => Symbol.Ask + TrailingDistancePips * Symbol.PipValue,
+          _ => 0d
+        };
+
+        position.ModifyStopLossPrice(price);
         position.ModifyTrailingStop(true);
         position.ModifyTakeProfitPips(null);
       }
@@ -181,10 +214,32 @@ namespace cAlgo.Robots
     private void MoveOrders()
     {
       if (_longOrder != null)
-        _longOrder.ModifyTargetPrice(GetBuyPrice);
+      {
+        var profitShortPosition = ShortPositions.Any(p => p.NetProfit > 0);
+        if (profitShortPosition)
+        {
+          _longOrder.Cancel();
+          _longOrder = null;
+        }
+        else
+        {
+          _longOrder.ModifyTargetPrice(GetBuyPrice);
+        }
+      }
 
       if (_shortOrder != null)
-        _shortOrder.ModifyTargetPrice(GetSellPrice);
+      {
+        var profitLongPosition = LongPositions.Any(p => p.NetProfit > 0);
+        if (profitLongPosition)
+        {
+          _shortOrder.Cancel();
+          _shortOrder = null;
+        }
+        else
+        {
+          _shortOrder.ModifyTargetPrice(GetSellPrice);
+        }
+      }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -204,8 +259,10 @@ namespace cAlgo.Robots
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void CreatePendingOrders(bool canGoLong, bool canGoShort)
     {
+      SearchForPendingOrders();
       if (!IsWithinTradingWindow()) return;
-
+      if (_currentBar.TickVolume < MinTickVolume) return;
+      
       var spreadPips = (Symbol.Ask - Symbol.Bid) / Symbol.PipSize;
       if (spreadPips > MaxSpreadPips)
       {
@@ -213,34 +270,54 @@ namespace cAlgo.Robots
         return;
       }
 
-      SearchForPendingOrders();
 
+      
       var volumeInUnits = GetDynamicVolumeInUnits();
 
       if (canGoLong && _longOrder is null)
       {
+        // Vado long solo se non ho posizioni short in profit  
+        //var canopen = !ShortPositions.Any(p => p.NetProfit > 0);// && LongPositions.Any(p => p.NetProfit > 0);
+
         var pos = FindNearestPosition(TradeType.Buy);
-        if (pos == null || (pos.NetProfit > 0 && pos.HasTrailingStop) || (pos.NetProfit <0 && Math.Abs(pos.NetProfit) > MinDistancePips * Symbol.PipValue))
-          PlaceStopLimitOrderAsync(TradeType.Buy, SymbolName, volumeInUnits, GetBuyPrice, LimitRangePips, Label, StopLossPips ==0 ? null: StopLossPips, TakeProfitPips, null, null, null, false, r =>
-          {
-            if (r.IsSuccessful)
-              _longOrder = r.PendingOrder;
-            else
-              Print($"Error placing LONG StopLimitOrder : {r.Error.ToString()}");
-          });
+        if (pos is { NetProfit: > 0, HasTrailingStop: true } && Math.Abs(pos.Pips) > ProfitDistancePips)
+        {
+          ExecuteMarketRangeOrder(TradeType.Buy, SymbolName, volumeInUnits, LimitRangePips, 
+            GetBuyPrice, Label, StopLossPips == 0 ? null : StopLossPips, TakeProfitPips);
+        }
+
+        if (pos == null || Math.Abs(pos.Pips) > MinDistancePips)
+          PlaceStopLimitOrderAsync(TradeType.Buy, SymbolName, volumeInUnits, GetBuyPrice, LimitRangePips, Label,
+            StopLossPips == 0 ? null : StopLossPips, TakeProfitPips, null, null, null, false, r =>
+            {
+              if (r.IsSuccessful)
+                _longOrder = r.PendingOrder;
+              else
+                Print($"Error placing LONG StopLimitOrder : {r.Error.ToString()}");
+            });
       }
 
       if (canGoShort && _shortOrder is null)
       {
+        // Vado short solo se non ho posizioni long in profit 
+        // var canOpen = !LongPositions.Any(p => p.NetProfit > 0) && !ShortPositions.Any(p => p.NetProfit < 0);
+
         var pos = FindNearestPosition(TradeType.Sell);
-        if (pos == null || (pos.NetProfit > 0 && pos.HasTrailingStop) || (pos.NetProfit <0 && Math.Abs(pos.NetProfit) > MinDistancePips * Symbol.PipValue))
-          PlaceStopLimitOrderAsync(TradeType.Sell, SymbolName, volumeInUnits, GetSellPrice, LimitRangePips, Label, StopLossPips ==0 ? null: StopLossPips, TakeProfitPips, null, null, null, false, r =>
-          {
-            if (r.IsSuccessful)
-              _shortOrder = r.PendingOrder;
-            else
-              Print($"Error placing SHORT StopLimitOrder : {r.Error.ToString()}");
-          });
+        if (pos is { NetProfit: > 0, HasTrailingStop: true } && Math.Abs(pos.Pips) > ProfitDistancePips)
+        {
+          ExecuteMarketRangeOrder(TradeType.Sell, SymbolName, volumeInUnits, LimitRangePips, 
+            GetSellPrice, Label, StopLossPips == 0 ? null : StopLossPips, TakeProfitPips);
+        }
+
+        if (pos == null || Math.Abs(pos.Pips) > MinDistancePips)
+          PlaceStopLimitOrderAsync(TradeType.Sell, SymbolName, volumeInUnits, GetSellPrice, LimitRangePips, Label,
+            StopLossPips == 0 ? null : StopLossPips, TakeProfitPips, null, null, null, false, r =>
+            {
+              if (r.IsSuccessful)
+                _shortOrder = r.PendingOrder;
+              else
+                Print($"Error placing SHORT StopLimitOrder : {r.Error.ToString()}");
+            });
       }
     }
 
