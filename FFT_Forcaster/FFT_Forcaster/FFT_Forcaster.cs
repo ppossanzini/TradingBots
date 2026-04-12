@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using cAlgo.API;
 using cAlgo.API.Indicators;
@@ -205,11 +206,11 @@ namespace cAlgo.Robots
     [Parameter("Close on Bar position age (min)", Group = "Close Strategy", DefaultValue = 1)]
     public int CloseOnBarPostionAge { get; set; }
 
-    [Parameter("Close old if profit", Group = "Close Strategy", DefaultValue = true)]
-    public bool CloseOldIfProfit { get; set; }
-
-    [Parameter("Old min profit", Group = "Close Strategy", DefaultValue = 100)]
-    public double MinProfit { get; set; }
+    // [Parameter("Close old if profit", Group = "Close Strategy", DefaultValue = true)]
+    // public bool CloseOldIfProfit { get; set; }
+    //
+    // [Parameter("Old min profit", Group = "Close Strategy", DefaultValue = 100)]
+    // public double MinProfit { get; set; }
 
     [Parameter("Close on wrong signal time limit (min)", Group = "Close Strategy", DefaultValue = 100)]
     public int WrongSignalTimeLimit { get; set; }
@@ -245,73 +246,14 @@ namespace cAlgo.Robots
     }
 
     private readonly HashSet<int> _takeprofitadjusted = new();
-
+    
+    
     protected override void OnStart()
     {
       _bars = MarketData.GetBars(DataTimeFrame, SymbolName);
       _bars.LoadMoreHistory();
 
       _movingAverage = Indicators.MovingAverage(MovingAverageDataSeries, MovingAveratePeriods, MovingAverageType);
-    }
-
-    private void EvaluateTrailing()
-    {
-      switch (StepperTrailingStop)
-      {
-        default:
-        case TrailingStopStrategy.None: return;
-        case TrailingStopStrategy.Absolute:
-          foreach (var pos in LongPositions)
-          {
-            if (pos.NetProfit < 0) continue;
-            if (pos.Pips < TrailingStopMinDistance) continue;
-            var newts = TrailingStopDistance;
-            if ((pos.Pips - newts) < TrailingStopMinDistance) continue;
-
-            var newSlPrice = Symbol.Bid - newts * Symbol.PipSize;
-            if (newSlPrice < pos.EntryPrice) continue;
-            if (newSlPrice < pos.StopLoss) continue;
-
-            pos.ModifyStopLossPrice(newSlPrice);
-            pos.ModifyTakeProfitPips(null); //  Rimuovo il take profit per far correre il prezzo
-          }
-
-          break;
-        case TrailingStopStrategy.Percent:
-          foreach (var pos in LongPositions)
-          {
-            if (pos.NetProfit < 0) continue;
-            if (pos.Pips < TrailingStopMinDistance) continue;
-            var newts = pos.Pips * TrailingStopDistance / 100;
-            if ((pos.Pips - newts) < TrailingStopMinDistance) continue;
-
-            var newSlPrice = Symbol.Bid - newts * Symbol.PipSize;
-            if (newSlPrice < pos.EntryPrice) continue;
-            if (newSlPrice < pos.StopLoss) continue;
-
-            // Non attivo il trailing stop nativo ma calcolo io ad ogni tick se devo fare qualcosa. 
-            pos.ModifyStopLossPrice(newSlPrice);
-            pos.ModifyTakeProfitPips(null); //  Rimuovo il take profit per far correre il prezzo
-          }
-
-          break;
-
-        case TrailingStopStrategy.RelativeToLastCandle:
-          foreach (var pos in LongPositions)
-          {
-            if (pos.NetProfit < 0) continue;
-            var bar = _bars.Last(1);
-
-            var delta = (bar.Close - bar.Open) * TrailingStopDistance / 100;
-            var newprice = bar.Open + delta;
-            if (newprice < pos.EntryPrice) continue;
-            if (newprice < pos.StopLoss) continue;
-            pos.ModifyStopLossPrice(newprice);
-            pos.ModifyTakeProfitPips(null); //  Rimuovo il take profit per far correre il prezzo
-          }
-
-          break;
-      }
     }
 
     protected override void OnBar()
@@ -325,6 +267,109 @@ namespace cAlgo.Robots
         EvaluateMarketAndPlaceOrders();
 
       base.OnBar();
+    }
+
+    private void EvaluateTrailing()
+    {
+      switch (StepperTrailingStop)
+      {
+        default:
+        case TrailingStopStrategy.None: return;
+        case TrailingStopStrategy.Absolute:
+          foreach (var pos in LongPositions)
+          {
+            if (!EvaluateTrailingStopConditions(pos, out var newts)) continue;
+
+            var newSlPrice = Symbol.Bid - newts * Symbol.PipSize;
+            if (newSlPrice < pos.EntryPrice) continue;
+            if (newSlPrice < pos.StopLoss) continue;
+
+            pos.ModifyStopLossPrice(newSlPrice);
+            pos.ModifyTakeProfitPips(null); //  Rimuovo il take profit per far correre il prezzo
+          }
+
+          foreach (var pos in ShortPositions)
+          {
+            if (!EvaluateTrailingStopConditions(pos, out var newts)) continue;
+
+            var newSlPrice = Symbol.Ask + newts * Symbol.PipSize;
+            if (newSlPrice > pos.EntryPrice) continue;
+            if (newSlPrice > pos.StopLoss) continue;
+
+            pos.ModifyStopLossPrice(newSlPrice);
+            pos.ModifyTakeProfitPips(null); //  Rimuovo il take profit per far correre il prezzo
+          }
+
+          break;
+        case TrailingStopStrategy.Percent:
+          foreach (var pos in LongPositions)
+          {
+            if (!EvaluateTrailingStopConditions(pos, out var newts)) continue;
+
+            var newSlPrice = Symbol.Bid - newts * Symbol.PipSize;
+            if (newSlPrice < pos.EntryPrice) continue;
+            if (newSlPrice < pos.StopLoss) continue;
+
+            // Non attivo il trailing stop nativo ma calcolo io ad ogni tick se devo fare qualcosa. 
+            pos.ModifyStopLossPrice(newSlPrice);
+            pos.ModifyTakeProfitPips(null); //  Rimuovo il take profit per far correre il prezzo
+          }
+
+          foreach (var pos in ShortPositions)
+          {
+            if (!EvaluateTrailingStopConditions(pos, out var newts)) continue;
+
+            var newSlPrice = Symbol.Ask + newts * Symbol.PipSize;
+            if (newSlPrice > pos.EntryPrice) continue;
+            if (newSlPrice > pos.StopLoss) continue;
+
+            // Non attivo il trailing stop nativo ma calcolo io ad ogni tick se devo fare qualcosa. 
+            pos.ModifyStopLossPrice(newSlPrice);
+            pos.ModifyTakeProfitPips(null); //  Rimuovo il take profit per far correre il prezzo
+          }
+
+          break;
+
+        case TrailingStopStrategy.RelativeToLastCandle:
+          foreach (var pos in LongPositions)
+          {
+            if (!EvaluateTrailingStopConditions(pos, out var newts)) continue;
+
+            var bar = _bars.Last(1);
+            var delta = (bar.Close - bar.Open) * TrailingStopDistance / 100;
+            var newprice = bar.Open + delta;
+            if (newprice < pos.EntryPrice) continue;
+            if (newprice < pos.StopLoss) continue;
+            pos.ModifyStopLossPrice(newprice);
+            pos.ModifyTakeProfitPips(null); //  Rimuovo il take profit per far correre il prezzo
+          }
+
+          foreach (var pos in ShortPositions)
+          {
+            if (!EvaluateTrailingStopConditions(pos, out var newts)) continue;
+
+            var bar = _bars.Last(1);
+            var delta = (bar.Close - bar.Open) * TrailingStopDistance / 100;
+            var newprice = bar.Open + delta;
+            if (newprice < pos.EntryPrice) continue;
+            if (newprice < pos.StopLoss) continue;
+            pos.ModifyStopLossPrice(newprice);
+            pos.ModifyTakeProfitPips(null); //  Rimuovo il take profit per far correre il prezzo
+          }
+
+          break;
+      }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool EvaluateTrailingStopConditions(Position pos, out double newts)
+    {
+      newts = 0;
+      if (pos.NetProfit < 0) return false;
+      if (pos.Pips < TrailingStopMinDistance) return false;
+      newts = pos.Pips * TrailingStopDistance / 100;
+      if ((pos.Pips - newts) < TrailingStopMinDistance) return false;
+      return true;
     }
 
     void AdjustPositionOnBar()
@@ -567,43 +612,35 @@ namespace cAlgo.Robots
       // Applico politiche di chiusura solo per operazioni che hanno trailing stop
       var tradepositions = Positions.Where(i =>
         i.SymbolName == SymbolName &&
-        i.Label.StartsWith(FullName)).ToArray();
+        i.Label.StartsWith(PositionPrefix)).ToArray();
 
 
       // Valuto le aperture rischiose
       var direction = CalcDirection();
       var remediationtime = Server.Time.Subtract(TimeSpan.FromMinutes(WrongSignalTimeLimit));
       if (direction.trade == TradeType.Sell)
-        if (tradepositions.Any())
-          foreach (var pos in tradepositions.Where(i => i.EntryTime > remediationtime && i.NetProfit < 0))
-            pos.Close();
+        foreach (var pos in tradepositions.Where(i => i.EntryTime > remediationtime && i.NetProfit < 0))
+          pos.Close();
 
       if (CloseOnBar)
-      {
-        if (tradepositions.Any())
-          foreach (var pos in tradepositions.Where(i => i.EntryTime < closingbartime && i.NetProfit > 0))
-            pos.Close();
-      }
+        foreach (var pos in tradepositions.Where(i => i.EntryTime < closingbartime && i.NetProfit > 0))
+          pos.Close();
+
 
       // Chiudo tutto a fine giornata. 
       if (!this.IsMarketTime && this.CloseAllEod)
-        if (tradepositions.Any())
-          foreach (var pos in tradepositions)
-            pos.Close();
-
-
-      if (this.CloseOldIfProfit)
-        if (tradepositions.Any())
-          if (tradepositions.Where(i => (now - i.EntryTime).TotalDays > 0).Sum(i => i.NetProfit / Symbol.PipValue) > MinProfit)
-            foreach (var pos in tradepositions.Where(i => (now - i.EntryTime).TotalDays > 0))
-              pos.Close();
-
+        foreach (var pos in tradepositions)
+          pos.Close();
+      
+      // if (this.CloseOldIfProfit)
+      //   if (tradepositions.Where(i => (now - i.EntryTime).TotalDays > 0).Sum(i => i.NetProfit / Symbol.PipValue) > MinProfit)
+      //     foreach (var pos in tradepositions.Where(i => (now - i.EntryTime).TotalDays > 0))
+      //       pos.Close();
 
       // Chiudo solo i profittevoli
       if (!this.IsMarketTime && this.TakeProfitEod)
-        if (tradepositions.Any())
-          foreach (var pos in tradepositions.Where(i => i.Label.StartsWith(FullName) && i.NetProfit > 0))
-            pos.Close();
+        foreach (var pos in tradepositions.Where(i => i.NetProfit > 0))
+          pos.Close();
     }
   }
 
