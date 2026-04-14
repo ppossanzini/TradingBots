@@ -381,6 +381,7 @@ namespace cAlgo.Robots
       {
         if (this.Positions.Count > 0)
           foreach (var pos in Positions.Where(i =>
+                     i.SymbolName == SymbolName && i.Label.StartsWith(PositionPrefix) &&
                      i.EntryTime < barage && !_takeprofitadjusted.Contains(i.Id)))
           {
             pos.ModifyTakeProfitPips(OnBarTakeProfitPips);
