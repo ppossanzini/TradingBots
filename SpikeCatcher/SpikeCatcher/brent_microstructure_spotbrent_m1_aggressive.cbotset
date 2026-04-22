@@ -1,0 +1,39 @@
+{
+  "Chart": {
+    "Symbol": "SpotBrent",
+    "Period": "m1"
+  },
+  "Parameters": {
+    "PositionPrefix": "BrentMicroAggr",
+    "Direction": 0,
+    "UseTradingWindow": true,
+    "StartTime": "07:00",
+    "EndTime": "21:45",
+    "MaxOpenPositions": 1,
+    "Lots": 0.02,
+    "StopLossPips": 140.0,
+    "TakeProfitPips": 260.0,
+    "MaxSpreadPips": 7.5,
+    "MinTicks60": 28,
+    "MinTickRateAcceleration": 1.05,
+    "MinRange60Pips": 22.0,
+    "MinRangeExpansionFactor": 1.15,
+    "MinVolatility60Pips": 1.8,
+    "MinVolatilityExpansionFactor": 1.05,
+    "LongImbalance10": 0.12,
+    "ShortImbalance10": -0.12,
+    "MinDirectionalRun10": 2,
+    "LongDrift30Pips": 3.0,
+    "ShortDrift30Pips": -3.0,
+    "UseMeanReversionKick": true,
+    "ReversionDip60Pips": 8.0,
+    "SlopeRecovery10Pips": 1.5,
+    "TimeStopSeconds": 420,
+    "MinProfitAtTimeStopPips": 0.0,
+    "MinMfeForRetracementExitPips": 24.0,
+    "RetracementExitPct": 0.50,
+    "ExitDrift30Pips": 6.0,
+    "ExitImbalance10": 0.20,
+    "CooldownAfterExitSeconds": 8
+  }
+}
