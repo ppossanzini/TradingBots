@@ -364,6 +364,13 @@ namespace cAlgo.Robots
 
       var dynamicOffset = atrPips * AtrMultiplier;
 
+      // Spread-aware offset adjustment: increase offset during high spread
+      var spreadPips = (Symbol.Ask - Symbol.Bid) / Symbol.PipSize;
+      if (spreadPips > MaxSpreadPips * 0.8)  // If spread is near limit, increase offset safety margin
+      {
+        dynamicOffset *= 1.2;
+      }
+
       if (dynamicOffset < MinDynamicOffsetPips)
         dynamicOffset = MinDynamicOffsetPips;
 
@@ -371,6 +378,22 @@ namespace cAlgo.Robots
         dynamicOffset = MaxDynamicOffsetPips;
 
       return dynamicOffset;
+    }
+
+    private double GetPositionSpacing()
+    {
+      if (!UseAtrBasedSpacing)
+        return DistanceBetweenPositionsInPips;
+
+      // Dynamic position spacing based on volatility
+      var atrPrice = _atr.Result.LastValue;
+      var atrPips = atrPrice / Symbol.PipSize;
+
+      // Spacing = base distance + (ATR * 0.5), min = base, max = base * 2
+      var dynamicSpacing = DistanceBetweenPositionsInPips + (atrPips * 0.5);
+      var maxSpacing = DistanceBetweenPositionsInPips * 2;
+
+      return Math.Min(dynamicSpacing, maxSpacing);
     }
 
     protected void ManageTrailing()
