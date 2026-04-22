@@ -29,8 +29,14 @@ namespace cAlgo.Robots
     [Parameter("Trading End Time", DefaultValue = "22:00")]
     public string TradingEndTime { get; set; }
 
+    [Parameter("Enable Friday Close", DefaultValue = true)]
+    public bool EnableFridayClose { get; set; }
+
     [Parameter("Friday Close Time", DefaultValue = "20:00")]
     public string FridayCloseTime { get; set; }
+
+    [Parameter("Enable Trading Window", DefaultValue = true)]
+    public bool EnableTradingWindow { get; set; }
 
     #region Market Sizing
 
@@ -166,7 +172,7 @@ namespace cAlgo.Robots
 
     protected override void OnBar()
     {
-      if (IsFridayCloseTimeReached())
+      if (EnableFridayClose && IsFridayCloseTimeReached())
         CloseFridayPositions();
 
       if (Bars.OpenTimes.LastValue != _lastBarTime)
@@ -213,7 +219,7 @@ namespace cAlgo.Robots
 
     private void UpdatePendingOrders()
     {
-      if (!IsWithinTradingWindow())
+      if (EnableTradingWindow && !IsWithinTradingWindow())
       {
         Print("Fuori fascia oraria di trading, nessun nuovo ordine piazzato.");
         return;
