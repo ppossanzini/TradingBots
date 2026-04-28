@@ -37,7 +37,7 @@ namespace cAlgo.Robots
     public int TimerInterval { get; set; } = 30;
 
     [Parameter("Losing position Time to Live in minutes", DefaultValue = "3")]
-    public int TimeToLive { get; set; } = 180;
+    public int TimeToLive { get; set; } = 3;
 
     #region Market Sizing
 
@@ -94,6 +94,15 @@ namespace cAlgo.Robots
 
     [Parameter("MinTickVolume", DefaultValue = 30, MinValue = 0, Group = "Pending Positions")]
     public int MinTickVolume { get; set; }
+
+    [Parameter("Min Bar Range Pips", DefaultValue = 2.0, MinValue = 0, Group = "Pending Positions")]
+    public double MinBarRangePips { get; set; }
+
+    [Parameter("Allow Hedging", DefaultValue = false, Group = "Orders")]
+    public bool AllowHedging { get; set; }
+
+    [Parameter("Add To Losing Positions", DefaultValue = false, Group = "Orders")]
+    public bool AddToLosingPositions { get; set; }
     #endregion
 
     string Label => $"{PositionPrefix}-{PositionSuffix}";
@@ -128,8 +137,8 @@ namespace cAlgo.Robots
     {
       var nearPosition = operation switch
       {
-        TradeType.Buy => this.LongPositions.MinBy(p => Math.Abs(p.NetProfit / Symbol.PipValue)),
-        TradeType.Sell => this.ShortPositions.MinBy(p => Math.Abs(p.NetProfit / Symbol.PipValue)),
+        TradeType.Buy => this.LongPositions.MinBy(p => Math.Abs(p.Pips)),
+        TradeType.Sell => this.ShortPositions.MinBy(p => Math.Abs(p.Pips)),
         _ => null
       };
       return nearPosition;
@@ -195,12 +204,12 @@ namespace cAlgo.Robots
       {
         if (position.SymbolName != SymbolName || position.Label != Label) continue;
         if (position.HasTrailingStop) continue;
-        if (position.NetProfit < 0 || position.NetProfit < TrailingTriggerPips * Symbol.PipValue) continue;
+        if (position.Pips < TrailingTriggerPips) continue;
 
         var price = position.TradeType switch
         {
-          TradeType.Buy => Symbol.Bid - TrailingDistancePips * Symbol.PipValue,
-          TradeType.Sell => Symbol.Ask + TrailingDistancePips * Symbol.PipValue,
+          TradeType.Buy => Symbol.Bid - TrailingDistancePips * Symbol.PipSize,
+          TradeType.Sell => Symbol.Ask + TrailingDistancePips * Symbol.PipSize,
           _ => 0d
         };
 
@@ -262,6 +271,28 @@ namespace cAlgo.Robots
       SearchForPendingOrders();
       if (!IsWithinTradingWindow()) return;
       if (_currentBar.TickVolume < MinTickVolume) return;
+      if ((_currentBar.High - _currentBar.Low) / Symbol.PipSize < MinBarRangePips) return;
+      if (OrderDirection == OrderDirectionMode.LongOnly)
+        canGoShort = false;
+      else if (OrderDirection == OrderDirectionMode.ShortOnly)
+        canGoLong = false;
+
+      // Optional anti-chop constraints.
+      if (!AllowHedging)
+      {
+        if (LongPositions.Any())
+          canGoShort = false;
+        if (ShortPositions.Any())
+          canGoLong = false;
+      }
+
+      if (!AddToLosingPositions)
+      {
+        if (LongPositions.Any(p => p.NetProfit < 0))
+          canGoLong = false;
+        if (ShortPositions.Any(p => p.NetProfit < 0))
+          canGoShort = false;
+      }
       
       var spreadPips = (Symbol.Ask - Symbol.Bid) / Symbol.PipSize;
       if (spreadPips > MaxSpreadPips)
@@ -366,8 +397,11 @@ namespace cAlgo.Robots
 
     private void CloseFridayPositions()
     {
-      // foreach (var position in Positions.Where(p => p.SymbolName == SymbolName && p.Label == Label).ToArray())
-      //     ClosePosition(position);
+      foreach (var position in Positions.Where(p => p.SymbolName == SymbolName && p.Label == Label).ToArray())
+        ClosePosition(position);
+
+      foreach (var pending in PendingOrders.Where(p => p.SymbolName == SymbolName && p.Label == Label).ToArray())
+        CancelPendingOrder(pending);
 
       Print("Venerdì: posizioni chiuse e pending cancellate.");
     }

@@ -30,6 +30,8 @@ namespace cAlgo.Robots
   [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.None)]
   public class Furiere : Robot
   {
+    private const string HEDGING = "_HEDGING"; 
+    
     private MovingAverage _movingAverage = null;
 
     [Parameter("Name", Group = "General", DefaultValue = "Furiere")]
@@ -38,6 +40,8 @@ namespace cAlgo.Robots
     [Parameter("Full Name", Group = "General", DefaultValue = "Furiere_Pending")]
     public string FullName { get; set; }
 
+    public string Label => $"{PositionPrefix}_{FullName}";
+    
     [Parameter("Data Timeframe", Group = "General")]
     public TimeFrame DataTimeFrame { get; set; }
 
@@ -79,6 +83,16 @@ namespace cAlgo.Robots
     public int LargeHarmonicsCount { get; set; } = 40;
 
     #endregion
+    
+    #region Hedging
+    
+    [Parameter(nameof(UseHedging), Group = "Hedging")]
+    public bool UseHedging { get; set; }
+    [Parameter(nameof(HedgeDistancePip), Group = "Hedging")]
+    public double HedgeDistancePip { get; set; }
+    [Parameter(nameof(HedgeStopLimitRange), Group = "Hedging")]
+    public double HedgeStopLimitRange { get; set; }
+    #endregion
 
     #region Trend & Bounce Prediction
 
@@ -101,12 +115,11 @@ namespace cAlgo.Robots
     [Parameter("Prediction Position (Future)", MinValue = 1, DefaultValue = 5, Group = "Pending Strategy")]
     public int PredictionPosition { get; set; } = 5;
 
-
     [Parameter(nameof(LookBackPosition), MinValue = 1, DefaultValue = 3, Group = "Pending Strategy")]
     public int LookBackPosition { get; set; } = 3;
 
     [Parameter("Pending Expiration (_bars)", MinValue = 1, DefaultValue = 5, Group = "Pending Strategy")]
-    public int PendingExpiration_bars { get; set; } = 5;
+    public int PendingExpirationBars { get; set; } = 5;
 
     [Parameter("Prediction Strength (pip)", MinValue = 0, DefaultValue = 3, Group = "Pending Strategy")]
     public double PredictionStrength { get; set; }
@@ -253,6 +266,9 @@ namespace cAlgo.Robots
       _bars = MarketData.GetBars(DataTimeFrame, SymbolName);
       _bars.LoadMoreHistory();
 
+      Positions.Opened += poea =>  EvaluateHedging(poea.Position);
+      Positions.Closed += pcea =>  EvaluateCloseHedging(pcea.Position);
+
       _movingAverage = Indicators.MovingAverage(MovingAverageDataSeries, MovingAveratePeriods, MovingAverageType);
     }
 
@@ -269,6 +285,39 @@ namespace cAlgo.Robots
       base.OnBar();
     }
 
+    private void EvaluateHedging(Position pos)
+    {
+      
+      if(!UseHedging) return;
+      if(pos.Label.Contains(HEDGING)) return;
+
+      Print("Evaluating Hedging");
+      int direction = pos.TradeType switch
+      {
+        TradeType.Sell => 1,
+        TradeType.Buy => -1,
+        _ => 0
+      };
+
+      var result =PlaceStopLimitOrder(pos.TradeType == TradeType.Buy ? TradeType.Sell : TradeType.Buy, SymbolName, pos.VolumeInUnits,  
+          pos.EntryPrice + (direction* HedgeDistancePip* Symbol.PipSize),
+          HedgeStopLimitRange,
+          $"{PositionPrefix}_{HEDGING}_{pos.Id}" 
+        );
+      
+      if(!result.IsSuccessful)
+        Print($"Hedging failed { result.Error}");
+    }
+
+    private void EvaluateCloseHedging(Position pos)
+    {
+      var order = PendingOrders.FirstOrDefault(o => o.Label == $"{PositionPrefix}_{HEDGING}_{pos.Id}" && Symbol.Name == SymbolName);
+      order?.Cancel();
+
+      var openposition = Positions.FirstOrDefault(p => p.SymbolName == SymbolName && p.Label == $"{PositionPrefix}_{HEDGING}_{pos.Id}");
+      openposition?.Close();
+    }
+
     private void EvaluateTrailing()
     {
       switch (StepperTrailingStop)
@@ -280,7 +329,7 @@ namespace cAlgo.Robots
           {
             if (!EvaluateTrailingStopConditions(pos, out var newts)) continue;
 
-            var newSlPrice = Symbol.Bid - newts * Symbol.PipSize;
+            var newSlPrice = Symbol.Bid - TrailingStopDistance * Symbol.PipSize;
             if (newSlPrice < pos.EntryPrice) continue;
             if (newSlPrice < pos.StopLoss) continue;
 
@@ -292,7 +341,7 @@ namespace cAlgo.Robots
           {
             if (!EvaluateTrailingStopConditions(pos, out var newts)) continue;
 
-            var newSlPrice = Symbol.Ask + newts * Symbol.PipSize;
+            var newSlPrice = Symbol.Ask + TrailingStopDistance * Symbol.PipSize;
             if (newSlPrice > pos.EntryPrice) continue;
             if (newSlPrice > pos.StopLoss) continue;
 
@@ -367,8 +416,7 @@ namespace cAlgo.Robots
       newts = 0;
       if (pos.NetProfit < 0) return false;
       if (pos.Pips < TrailingStopMinDistance) return false;
-      newts = pos.Pips * TrailingStopDistance / 100;
-      if ((pos.Pips - newts) < TrailingStopMinDistance) return false;
+      newts = pos.Pips * (100- TrailingStopDistance) / 100;
       return true;
     }
 
@@ -392,7 +440,7 @@ namespace cAlgo.Robots
 
     private void EvaluateMarketAndPlaceOrders()
     {
-      DateTime expiration = Server.Time.AddMinutes((_bars.LastBar.OpenTime - _bars.Last(PendingExpiration_bars).OpenTime).TotalMinutes);
+      DateTime expiration = Server.Time.AddMinutes((_bars.LastBar.OpenTime - _bars.Last(PendingExpirationBars).OpenTime).TotalMinutes);
 
       // 1. Pulizia ordini pendenti obsoleti o contrari alla nuova previsione o con positione predetta lontada dalla nuova previsione
       double targetPrice = GetFftTargetPrice(PredictionPosition);
@@ -401,7 +449,8 @@ namespace cAlgo.Robots
       {
         if (targetPrice > po.TargetPrice) continue;
 
-        po.ModifyExpirationTime(expiration);
+        if(!po.Label.Contains(HEDGING))
+          po.ModifyExpirationTime(expiration);
         po.ModifyTargetPrice(targetPrice);
       }
 
@@ -428,17 +477,17 @@ namespace cAlgo.Robots
 
       // 2. Controllo Limiti (Aperte + Pendenti)
       int activeLongs = LongPositions.Length +
-                        PendingOrders.Count(o => o.TradeType == TradeType.Buy && o.Label == FullName);
+                        PendingOrders.Count(o => o.TradeType == TradeType.Buy && o.Label == Label);
       int activeShorts = ShortPositions.Length +
-                         PendingOrders.Count(o => o.TradeType == TradeType.Sell && o.Label == FullName);
+                         PendingOrders.Count(o => o.TradeType == TradeType.Sell && o.Label == Label);
 
-      int longPending = PendingOrders.Count(o => o.TradeType == TradeType.Buy && o.Label == FullName);
-      int shortPending = PendingOrders.Count(o => o.TradeType == TradeType.Sell && o.Label == FullName);
+      int longPending = PendingOrders.Count(o => o.TradeType == TradeType.Buy && o.Label == Label);
+      int shortPending = PendingOrders.Count(o => o.TradeType == TradeType.Sell && o.Label == Label);
 
       var margin = (Account.Margin == 0 ? Account.Equity : (Account.Equity / Account.Margin) * 100);
       Print("Margin Level: " + margin);
       var nearPosition = FindNearestPosition(TradeType.Buy);
-      var nearPending = PendingOrders.Where(o => o.TradeType == TradeType.Buy && o.Label == FullName).MinBy(o => Math.Abs(o.DistancePips));
+      var nearPending = PendingOrders.Where(o => o.TradeType == TradeType.Buy && o.Label == Label).MinBy(o => Math.Abs(o.DistancePips));
 
       switch (direction.trade)
       {
@@ -470,14 +519,14 @@ namespace cAlgo.Robots
         case TradeType.Buy when targetPrice > Symbol.Ask:
           PlaceStopOrder(direction.trade.Value,
             SymbolName, vol, targetPrice,
-            FullName,
+            Label,
             null,
             tp, ProtectionType.Relative, expiration);
           break;
         case TradeType.Buy when direction.predictiontype == Helpers.PredictionTypeEnum.Bounce && targetPrice < Symbol.Bid:
           PlaceLimitOrder(TradeType.Buy,
             SymbolName, vol, targetPrice,
-            FullName,
+            Label,
             null,
             tp, ProtectionType.Relative, expiration);
           break;
