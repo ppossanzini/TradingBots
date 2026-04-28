@@ -1,0 +1,42 @@
+﻿{
+  "Chart": {
+    "Symbol": "XRP/USD",
+    "Period": "m1"
+  },
+  "Parameters": {
+    "Label": "SpikeCatcher-Crypto",
+    "PositionPrefix": "Spike Catcher",
+    "EnableFridayClose": false,
+    "EnableTradingWindow": false,
+    "TradingStartTime": "00:00",
+    "TradingEndTime": "23:59",
+    "FridayCloseTime": "20:00",
+    "OrderDirection": 0,
+    "MinVolumeLots": 0.01,
+    "MaxVolumeLots": 0.10,
+    "MarginPercentDivider": 10.0,
+    "MaxLongPositions": 3,
+    "MaxShortPositions": 1,
+    "EvaluatingTimeFrame": "Hour",
+    "EvaluationgCandles": 15,
+    "EvaluatingRange": 20,
+    "MaxSpreadPips": 2.0,
+    "FixedOffsetPips": 5.0,
+    "UseDynamicOffset": true,
+    "AtrPeriod": 14,
+    "AtrMultiplier": 0.8,
+    "MinDynamicOffsetPips": 2.5,
+    "MaxDynamicOffsetPips": 12.0,
+    "DistanceBetweenPositionsInPips": 60.0,
+    "MinAtrFilterPips": 5.0,
+    "BreakoutConfirmationPips": 1.0,
+    "MinCandleBodyPercent": 55.0,
+    "CooldownBars": 4,
+    "TakeProfitPips": 250.0,
+    "TrailingTriggerPips": 10.0,
+    "TrailingDistancePips": 5.0,
+    "StopLossPips": 12.0,
+    "BrEvenTriggerPips": 3.0,
+    "BrEvenDistancePips": 1.0
+  }
+}

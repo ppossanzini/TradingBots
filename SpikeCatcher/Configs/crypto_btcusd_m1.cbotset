@@ -1,0 +1,42 @@
+﻿{
+  "Chart": {
+    "Symbol": "BTC/USD",
+    "Period": "m1"
+  },
+  "Parameters": {
+    "Label": "SpikeCatcher-Crypto",
+    "PositionPrefix": "Spike Catcher",
+    "EnableFridayClose": false,
+    "EnableTradingWindow": false,
+    "TradingStartTime": "00:00",
+    "TradingEndTime": "23:59",
+    "FridayCloseTime": "20:00",
+    "OrderDirection": 0,
+    "MinVolumeLots": 0.01,
+    "MaxVolumeLots": 0.05,
+    "MarginPercentDivider": 5.0,
+    "MaxLongPositions": 3,
+    "MaxShortPositions": 2,
+    "EvaluatingTimeFrame": "Hour",
+    "EvaluationgCandles": 15,
+    "EvaluatingRange": 20,
+    "MaxSpreadPips": 3.0,
+    "FixedOffsetPips": 5.0,
+    "UseDynamicOffset": true,
+    "AtrPeriod": 12,
+    "AtrMultiplier": 1.0,
+    "MinDynamicOffsetPips": 4.0,
+    "MaxDynamicOffsetPips": 20.0,
+    "DistanceBetweenPositionsInPips": 40.0,
+    "MinAtrFilterPips": 8.0,
+    "BreakoutConfirmationPips": 2.0,
+    "MinCandleBodyPercent": 60.0,
+    "CooldownBars": 2,
+    "TakeProfitPips": 400.0,
+    "TrailingTriggerPips": 15.0,
+    "TrailingDistancePips": 8.0,
+    "StopLossPips": 20.0,
+    "BrEvenTriggerPips": 5.0,
+    "BrEvenDistancePips": 2.0
+  }
+}

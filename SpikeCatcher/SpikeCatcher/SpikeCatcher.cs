@@ -29,8 +29,14 @@ namespace cAlgo.Robots
     [Parameter("Trading End Time", DefaultValue = "22:00")]
     public string TradingEndTime { get; set; }
 
+    [Parameter("Enable Friday Close", DefaultValue = true)]
+    public bool EnableFridayClose { get; set; }
+
     [Parameter("Friday Close Time", DefaultValue = "20:00")]
     public string FridayCloseTime { get; set; }
+
+    [Parameter("Enable Trading Window", DefaultValue = true)]
+    public bool EnableTradingWindow { get; set; }
 
     #region Market Sizing
 
@@ -166,7 +172,7 @@ namespace cAlgo.Robots
 
     protected override void OnBar()
     {
-      if (IsFridayCloseTimeReached())
+      if (EnableFridayClose && IsFridayCloseTimeReached())
         CloseFridayPositions();
 
       if (Bars.OpenTimes.LastValue != _lastBarTime)
@@ -213,7 +219,7 @@ namespace cAlgo.Robots
 
     private void UpdatePendingOrders()
     {
-      if (!IsWithinTradingWindow())
+      if (EnableTradingWindow && !IsWithinTradingWindow())
       {
         Print("Fuori fascia oraria di trading, nessun nuovo ordine piazzato.");
         return;
@@ -364,6 +370,13 @@ namespace cAlgo.Robots
 
       var dynamicOffset = atrPips * AtrMultiplier;
 
+      // Spread-aware offset adjustment: increase offset during high spread
+      var spreadPips = (Symbol.Ask - Symbol.Bid) / Symbol.PipSize;
+      if (spreadPips > MaxSpreadPips * 0.8)  // If spread is near limit, increase offset safety margin
+      {
+        dynamicOffset *= 1.2;
+      }
+
       if (dynamicOffset < MinDynamicOffsetPips)
         dynamicOffset = MinDynamicOffsetPips;
 
@@ -371,6 +384,22 @@ namespace cAlgo.Robots
         dynamicOffset = MaxDynamicOffsetPips;
 
       return dynamicOffset;
+    }
+
+    private double GetPositionSpacing()
+    {
+      if (!UseAtrBasedSpacing)
+        return DistanceBetweenPositionsInPips;
+
+      // Dynamic position spacing based on volatility
+      var atrPrice = _atr.Result.LastValue;
+      var atrPips = atrPrice / Symbol.PipSize;
+
+      // Spacing = base distance + (ATR * 0.5), min = base, max = base * 2
+      var dynamicSpacing = DistanceBetweenPositionsInPips + (atrPips * 0.5);
+      var maxSpacing = DistanceBetweenPositionsInPips * 2;
+
+      return Math.Min(dynamicSpacing, maxSpacing);
     }
 
     protected void ManageTrailing()

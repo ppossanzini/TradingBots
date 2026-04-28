@@ -1,0 +1,42 @@
+﻿{
+  "Chart": {
+    "Symbol": "ETH/USD",
+    "Period": "m1"
+  },
+  "Parameters": {
+    "Label": "SpikeCatcher-Crypto",
+    "PositionPrefix": "Spike Catcher",
+    "EnableFridayClose": false,
+    "EnableTradingWindow": false,
+    "TradingStartTime": "00:00",
+    "TradingEndTime": "23:59",
+    "FridayCloseTime": "20:00",
+    "OrderDirection": 0,
+    "MinVolumeLots": 0.01,
+    "MaxVolumeLots": 0.10,
+    "MarginPercentDivider": 8.0,
+    "MaxLongPositions": 3,
+    "MaxShortPositions": 2,
+    "EvaluatingTimeFrame": "Hour",
+    "EvaluationgCandles": 15,
+    "EvaluatingRange": 20,
+    "MaxSpreadPips": 3.0,
+    "FixedOffsetPips": 5.0,
+    "UseDynamicOffset": true,
+    "AtrPeriod": 14,
+    "AtrMultiplier": 0.9,
+    "MinDynamicOffsetPips": 3.0,
+    "MaxDynamicOffsetPips": 15.0,
+    "DistanceBetweenPositionsInPips": 50.0,
+    "MinAtrFilterPips": 6.0,
+    "BreakoutConfirmationPips": 1.5,
+    "MinCandleBodyPercent": 55.0,
+    "CooldownBars": 3,
+    "TakeProfitPips": 300.0,
+    "TrailingTriggerPips": 12.0,
+    "TrailingDistancePips": 6.0,
+    "StopLossPips": 15.0,
+    "BrEvenTriggerPips": 4.0,
+    "BrEvenDistancePips": 1.5
+  }
+}
