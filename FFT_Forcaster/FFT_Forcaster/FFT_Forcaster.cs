@@ -124,6 +124,21 @@ namespace cAlgo.Robots
     [Parameter("Prediction Strength (pip)", MinValue = 0, DefaultValue = 3, Group = "Pending Strategy")]
     public double PredictionStrength { get; set; }
 
+    [Parameter(nameof(UseEntryScore), DefaultValue = true, Group = "Pending Strategy")]
+    public bool UseEntryScore { get; set; }
+
+    [Parameter(nameof(MinEntryScore), MinValue = 1, MaxValue = 4, DefaultValue = 3, Group = "Pending Strategy")]
+    public int MinEntryScore { get; set; }
+
+    [Parameter(nameof(UseAdaptivePredictionStrength), DefaultValue = false, Group = "Pending Strategy")]
+    public bool UseAdaptivePredictionStrength { get; set; }
+
+    [Parameter(nameof(AdaptiveStrengthLookback), MinValue = 5, DefaultValue = 30, Group = "Pending Strategy")]
+    public int AdaptiveStrengthLookback { get; set; }
+
+    [Parameter(nameof(AdaptiveStrengthMultiplier), MinValue = 0, Step = 0.1, DefaultValue = 0.5, Group = "Pending Strategy")]
+    public double AdaptiveStrengthMultiplier { get; set; }
+
     #endregion
 
     #region Moving Average
@@ -165,6 +180,15 @@ namespace cAlgo.Robots
     [Parameter("Trailing Stop Distance", Group = "Trailing Stop", MinValue = 0, DefaultValue = 30, Step = 10)]
     public double TrailingStopDistance { get; set; } = 10;
 
+    [Parameter("Break Even Strategy", Group = "Break Even")]
+    public bool BreakEven { get; set; }
+    
+    [Parameter("Break Even Distance (pips)", Group = "Break Even", MinValue = 0, DefaultValue = 10, Step = .1)]
+    public double BreakEvenDistance { get; set; }
+    
+    [Parameter("Break Even Protection (pips)", Group = "Break Even", MinValue = 0, DefaultValue = 10, Step = .1)]
+    public double BreakEvenDistancePip { get; set; }
+
     #endregion
 
     #region Money Management
@@ -203,6 +227,9 @@ namespace cAlgo.Robots
     [Parameter("Min TickVolume to open positions", Group = "Money Management", MinValue = 0, DefaultValue = 0)]
     public int MinTickVolume { get; set; } = 0;
 
+    [Parameter("Max TickVolume to open positions", Group = "Money Management", MinValue = 0, DefaultValue = 0)]
+    public int MaxTickVolume { get; set; } = 0;
+    
     #endregion
 
     #region Close Strategy
@@ -274,6 +301,9 @@ namespace cAlgo.Robots
 
     protected override void OnBar()
     {
+      if(this.BreakEven)
+        EvaluateBreakEven();
+      
       EvaluateTrailing();
 
       if (Bars.LastBar.OpenTime != _bars.LastBar.OpenTime) return;
@@ -318,6 +348,29 @@ namespace cAlgo.Robots
       openposition?.Close();
     }
 
+    private void EvaluateBreakEven()
+    {
+      foreach (var pos in LongPositions)
+      {
+        if(pos.StopLoss != null) continue;
+        if(pos.NetProfit > 0 && pos.Pips >= BreakEvenDistance)
+        {
+          var newsl = pos.EntryPrice + BreakEvenDistancePip * Symbol.PipSize;
+          pos.ModifyStopLossPrice(newsl);
+        }
+      }
+      
+      foreach (var pos in ShortPositions)
+      {
+        if(pos.StopLoss != null) continue;
+        if(pos.NetProfit > 0 && pos.Pips >= BreakEvenDistance)
+        {
+          var newsl = pos.EntryPrice - BreakEvenDistancePip * Symbol.PipSize;
+          pos.ModifyStopLossPrice(newsl);
+        }
+      }
+    }
+    
     private void EvaluateTrailing()
     {
       switch (StepperTrailingStop)
@@ -400,8 +453,8 @@ namespace cAlgo.Robots
             var bar = _bars.Last(1);
             var delta = (bar.Close - bar.Open) * TrailingStopDistance / 100;
             var newprice = bar.Open + delta;
-            if (newprice < pos.EntryPrice) continue;
-            if (newprice < pos.StopLoss) continue;
+            if (newprice > pos.EntryPrice) continue;
+            if (newprice > pos.StopLoss) continue;
             pos.ModifyStopLossPrice(newprice);
             pos.ModifyTakeProfitPips(null); //  Rimuovo il take profit per far correre il prezzo
           }
@@ -455,9 +508,11 @@ namespace cAlgo.Robots
       }
 
       var lastbar = _bars.Last(1);
-      if (lastbar.TickVolume < MinTickVolume)
+      bool belowMinTickVolume = MinTickVolume > 0 && lastbar.TickVolume < MinTickVolume;
+      bool aboveMaxTickVolume = MaxTickVolume > 0 && lastbar.TickVolume > MaxTickVolume;
+      if (belowMinTickVolume || aboveMaxTickVolume)
       {
-        Print($"Exit no volume: {lastbar.TickVolume} < {MinTickVolume}");
+        Print($"Exit no volume: {MinTickVolume}< {lastbar.TickVolume} < {MaxTickVolume}");
         return;
       }
 
@@ -486,8 +541,15 @@ namespace cAlgo.Robots
 
       var margin = (Account.Margin == 0 ? Account.Equity : (Account.Equity / Account.Margin) * 100);
       Print("Margin Level: " + margin);
-      var nearPosition = FindNearestPosition(TradeType.Buy);
-      var nearPending = PendingOrders.Where(o => o.TradeType == TradeType.Buy && o.Label == Label).MinBy(o => Math.Abs(o.DistancePips));
+      var tradeType = direction.trade.Value;
+      var nearPosition = FindNearestPosition(tradeType, targetPrice);
+      var nearPending = FindNearestPending(tradeType, targetPrice);
+      var nearPositionDistancePips = nearPosition == null
+        ? double.MaxValue
+        : Math.Abs((nearPosition.EntryPrice - targetPrice) / Symbol.PipSize);
+      var nearPendingDistancePips = nearPending == null
+        ? double.MaxValue
+        : Math.Abs((nearPending.TargetPrice - targetPrice) / Symbol.PipSize);
 
       switch (direction.trade)
       {
@@ -497,17 +559,25 @@ namespace cAlgo.Robots
           Print("Exit for Full long positions or margin");
           return;
 
-        case TradeType.Buy when nearPosition != null && Math.Abs(nearPosition.NetProfit / Symbol.PipValue) < this.DistanceBetweenPositionsInPips:
-          Print($"Exit for near position : {nearPosition.NetProfit / Symbol.PipValue} pips");
+        case TradeType.Buy when nearPosition != null && nearPositionDistancePips < this.DistanceBetweenPositionsInPips:
+          Print($"Exit for near position : {nearPositionDistancePips} pips");
           return;
 
-        case TradeType.Buy when nearPending != null && Math.Abs(nearPending.DistancePips) < this.DistanceBetweenPositionsInPips:
-          Print($"Exit for near pending : {nearPending.DistancePips} pips");
+        case TradeType.Buy when nearPending != null && nearPendingDistancePips < this.DistanceBetweenPositionsInPips:
+          Print($"Exit for near pending : {nearPendingDistancePips} pips");
           return;
         case TradeType.Sell when activeShorts >= this.MaxShortPositions ||
                                  shortPending > 0 ||
                                  this.ShortPositions.Sum(p => p.Quantity) >= this.LongPositions.Sum(p => p.Quantity):
-          Print($"Exit for invalid hedging conditions : {nearPosition?.NetProfit / Symbol.PipValue} pips");
+          Print($"Exit for invalid hedging conditions : {nearPositionDistancePips} pips");
+          return;
+
+        case TradeType.Sell when nearPosition != null && nearPositionDistancePips < this.DistanceBetweenPositionsInPips:
+          Print($"Exit for near position : {nearPositionDistancePips} pips");
+          return;
+
+        case TradeType.Sell when nearPending != null && nearPendingDistancePips < this.DistanceBetweenPositionsInPips:
+          Print($"Exit for near pending : {nearPendingDistancePips} pips");
           return;
       }
 
@@ -530,6 +600,20 @@ namespace cAlgo.Robots
             null,
             tp, ProtectionType.Relative, expiration);
           break;
+        case TradeType.Sell when targetPrice < Symbol.Bid:
+          PlaceStopOrder(TradeType.Sell,
+            SymbolName, vol, targetPrice,
+            Label,
+            null,
+            tp, ProtectionType.Relative, expiration);
+          break;
+        case TradeType.Sell when direction.predictiontype == Helpers.PredictionTypeEnum.Bounce && targetPrice > Symbol.Ask:
+          PlaceLimitOrder(TradeType.Sell,
+            SymbolName, vol, targetPrice,
+            Label,
+            null,
+            tp, ProtectionType.Relative, expiration);
+          break;
       }
     }
 
@@ -539,15 +623,22 @@ namespace cAlgo.Robots
       tp = Math.Max(MaxTakeProfitPips * _bars.Last(1).TickVolume / maxvolume, MinTakeProfitPips);
     }
 
-    private Position FindNearestPosition(TradeType? operation)
+    private Position FindNearestPosition(TradeType operation, double targetPrice)
     {
       var nearPosition = operation switch
       {
-        TradeType.Buy => this.LongPositions.MinBy(p => Math.Abs(p.NetProfit / Symbol.PipValue)),
-        TradeType.Sell => this.ShortPositions.MinBy(p => Math.Abs(p.NetProfit / Symbol.PipValue)),
+        TradeType.Buy => this.LongPositions.MinBy(p => Math.Abs((p.EntryPrice - targetPrice) / Symbol.PipSize)),
+        TradeType.Sell => this.ShortPositions.MinBy(p => Math.Abs((p.EntryPrice - targetPrice) / Symbol.PipSize)),
         _ => null
       };
       return nearPosition;
+    }
+
+    private PendingOrder FindNearestPending(TradeType operation, double targetPrice)
+    {
+      return PendingOrders
+        .Where(o => o.TradeType == operation && o.Label == Label)
+        .MinBy(o => Math.Abs((o.TargetPrice - targetPrice) / Symbol.PipSize));
     }
 
     private double GetFftTargetPrice(int futureIndex)
@@ -599,6 +690,33 @@ namespace cAlgo.Robots
       return (tp, bp, result + bp);
     }
 
+    private double GetEffectivePredictionStrength()
+    {
+      if (!UseAdaptivePredictionStrength) return PredictionStrength;
+
+      int availableBars = Math.Max(0, _bars.Count - 1);
+      int lookback = Math.Min(AdaptiveStrengthLookback, availableBars);
+      if (lookback <= 0) return PredictionStrength;
+
+      var avgBodyPips = _bars.GetLasts(lookback)
+        .Select(b => Math.Abs((b.Close - b.Open) / Symbol.PipSize))
+        .DefaultIfEmpty(PredictionStrength)
+        .Average();
+
+      var adaptiveStrength = avgBodyPips * AdaptiveStrengthMultiplier;
+      return Math.Max(PredictionStrength, adaptiveStrength);
+    }
+
+    private int CalcEntryScore(bool smallAligned, bool largeAligned, bool candlesAligned, double dir2, double effectiveStrength)
+    {
+      int score = 0;
+      if (smallAligned) score++;
+      if (largeAligned) score++;
+      if (candlesAligned) score++;
+      if (Math.Abs(dir2) >= effectiveStrength * 1.5) score++;
+      return score;
+    }
+
 
     private (TradeType?, Helpers.PredictionTypeEnum?, string) CalcFftPredictions()
     {
@@ -619,39 +737,71 @@ namespace cAlgo.Robots
       var dir1 = imixedResult.ExtractValue(SignalLength, -1) -
                  imixedResult.ExtractValue(SignalLength, -LookBackPosition - 1);
 
-      var ldir2 = imixedResult.ExtractValue(SignalLength, PredictionPosition + 1) -
-                  imixedResult.ExtractValue(SignalLength, 1);
-      var ldir1 = imixedResult.ExtractValue(SignalLength, -1) -
-                  imixedResult.ExtractValue(SignalLength, -LookBackPosition - 1);
+      var ldir2 = largeImixedResult.ExtractValue(SignalLength, PredictionPosition + 1) -
+                  largeImixedResult.ExtractValue(SignalLength, 1);
+      var ldir1 = largeImixedResult.ExtractValue(SignalLength, -1) -
+                  largeImixedResult.ExtractValue(SignalLength, -LookBackPosition - 1);
 
-      var actualdata = $"dir1: {dir1} -- dir2: {dir2}  --- large dir1: {ldir1} -- large dir2: {ldir2}";
-      if (Math.Abs(dir2) < PredictionStrength) return (null, null, $"Niente da fare {actualdata} - Strenght: {PredictionStrength}");
+      var effectiveStrength = GetEffectivePredictionStrength();
+      var actualdata = $"dir1:{dir1:F2} dir2:{dir2:F2} ldir1:{ldir1:F2} ldir2:{ldir2:F2} strength:{effectiveStrength:F2}";
+      if (Math.Abs(dir2) < effectiveStrength)
+        return (null, null, $"Skip strength |dir2|<{effectiveStrength:F2} [{actualdata}]");
+
+      bool trendCandlesUp = _bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0);
+      bool trendCandlesDown = _bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i < 0);
+      bool bounceCandlesUp = _bars.TakeLast(BounceTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0);
+      bool bounceCandlesDown = _bars.TakeLast(BounceTrendingCandles).Select(b => b.BarDirection()).All(i => i < 0);
+
+      bool smallTrendUp = dir1 > 0 && dir2 > 0;
+      bool largeTrendUp = ldir1 > 0 && ldir2 > 0;
+      bool smallTrendDown = dir1 < 0 && dir2 < 0;
+      bool largeTrendDown = ldir1 < 0 && ldir2 < 0;
+
+      bool smallBounceShort = dir1 > 0 && dir2 < 0;
+      bool largeBounceShort = ldir1 > 0 && ldir2 < 0;
+      bool smallBounceLong = dir1 < 0 && dir2 > 0;
+      bool largeBounceLong = ldir1 < 0 && ldir2 > 0;
 
 
       if (PredictTrend)
       {
-        if (ldir1 > 0 && ldir2 > 0 && _bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0))
-          if (dir1 > 0 && dir2 > 0 && _bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0))
-            return (TradeType.Buy, Helpers.PredictionTypeEnum.Trend, $"{actualdata} --> Trending LONG");
+        if (smallTrendUp && largeTrendUp && trendCandlesUp)
+        {
+          var score = CalcEntryScore(smallTrendUp, largeTrendUp, trendCandlesUp, dir2, effectiveStrength);
+          if (!UseEntryScore || score >= MinEntryScore)
+            return (TradeType.Buy, Helpers.PredictionTypeEnum.Trend, $"Trend LONG score:{score}/4 [{actualdata}]");
+          return (null, null, $"Reject Trend LONG score:{score}/4<{MinEntryScore} [{actualdata}]");
+        }
 
-        if (ldir1 < 0 && ldir2 < 0 && _bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i < 0))
-          if (dir1 < 0 && dir2 < 0 && _bars.TakeLast(MinTrendingCandles).Select(b => b.BarDirection()).All(i => i < 0))
-            return (TradeType.Sell, Helpers.PredictionTypeEnum.Trend, $"{actualdata} --> Trending SHORT");
+        if (smallTrendDown && largeTrendDown && trendCandlesDown)
+        {
+          var score = CalcEntryScore(smallTrendDown, largeTrendDown, trendCandlesDown, dir2, effectiveStrength);
+          if (!UseEntryScore || score >= MinEntryScore)
+            return (TradeType.Sell, Helpers.PredictionTypeEnum.Trend, $"Trend SHORT score:{score}/4 [{actualdata}]");
+          return (null, null, $"Reject Trend SHORT score:{score}/4<{MinEntryScore} [{actualdata}]");
+        }
       }
 
       if (PredictBounce)
       {
-        // var nv = imixedResult.ExtractValue(SignalLength, 5);
-        if (dir1 > 0 && dir2 < 0 && ldir1 > 0 && ldir2 < 0 &&
-            _bars.TakeLast(BounceTrendingCandles).Select(b => b.BarDirection()).All(i => i > 0)) // Se le ultime x candele sono Long
-          return (TradeType.Sell, Helpers.PredictionTypeEnum.Bounce, $"{actualdata} --> Bouncing SHORT");
+        if (smallBounceShort && largeBounceShort && bounceCandlesUp)
+        {
+          var score = CalcEntryScore(smallBounceShort, largeBounceShort, bounceCandlesUp, dir2, effectiveStrength);
+          if (!UseEntryScore || score >= MinEntryScore)
+            return (TradeType.Sell, Helpers.PredictionTypeEnum.Bounce, $"Bounce SHORT score:{score}/4 [{actualdata}]");
+          return (null, null, $"Reject Bounce SHORT score:{score}/4<{MinEntryScore} [{actualdata}]");
+        }
 
-        if (dir1 < 0 && dir2 > 0 && ldir1 < 0 && ldir2 > 0 &&
-            _bars.TakeLast(BounceTrendingCandles).Select(b => b.BarDirection()).All(i => i < 0)) // Se le ultime x candele solo short
-          return (TradeType.Buy, Helpers.PredictionTypeEnum.Bounce, $"{actualdata} --> Bouncing LONG");
+        if (smallBounceLong && largeBounceLong && bounceCandlesDown)
+        {
+          var score = CalcEntryScore(smallBounceLong, largeBounceLong, bounceCandlesDown, dir2, effectiveStrength);
+          if (!UseEntryScore || score >= MinEntryScore)
+            return (TradeType.Buy, Helpers.PredictionTypeEnum.Bounce, $"Bounce LONG score:{score}/4 [{actualdata}]");
+          return (null, null, $"Reject Bounce LONG score:{score}/4<{MinEntryScore} [{actualdata}]");
+        }
       }
 
-      return (null, null, "");
+      return (null, null, $"No pattern [{actualdata}]");
     }
 
     private void CheckCloseAll()
