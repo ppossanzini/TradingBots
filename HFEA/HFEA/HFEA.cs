@@ -2,192 +2,170 @@ using cAlgo.API;
 using cAlgo.API.Internals;
 using cAlgo.API.Indicators;
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace cAlgo.Robots
 {
-  public enum OrderDirectionMode
-  {
-    Both,
-    LongOnly,
-    ShortOnly
-  }
+    public enum OrderDirectionMode
+    {
+        Both,
+        LongOnly,
+        ShortOnly
+    }
 
-  [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.None)]
-  public class HFEA : Robot
-  {
-    [Parameter("Label", DefaultValue = "Spike Catcher")]
-    public string PositionSuffix { get; set; }
+    [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.None)]
+    public class HFEA : Robot
+    {
+        [Parameter("Label", DefaultValue = "ETH-HFT")]
+        public string PositionSuffix { get; set; }
 
-    [Parameter("Position Prefix", DefaultValue = "HFA")]
-    public string PositionPrefix { get; set; }
+        [Parameter("Position Prefix", DefaultValue = "HFEA")]
+        public string PositionPrefix { get; set; }
 
-    [Parameter("Trading Start Time", DefaultValue = "08:00")]
-    public string TradingStartTime { get; set; }
+        // Crypto trades 24/7 – default finestra aperta tutto il giorno
+        [Parameter("Trading Start Time", DefaultValue = "00:00")]
+        public string TradingStartTime { get; set; }
 
-    [Parameter("Trading End Time", DefaultValue = "22:00")]
-    public string TradingEndTime { get; set; }
+        [Parameter("Trading End Time", DefaultValue = "23:59")]
+        public string TradingEndTime { get; set; }
 
-    [Parameter("Friday Close Time", DefaultValue = "20:00")]
-    public string FridayCloseTime { get; set; }
+        [Parameter("Friday Close Time", DefaultValue = "23:59")]
+        public string FridayCloseTime { get; set; }
 
-    [Parameter("Timer Interval in seconds", DefaultValue = "30")]
-    public int TimerInterval { get; set; } = 30;
+        [Parameter("Timer Interval (seconds)", DefaultValue = 10)]
+        public int TimerInterval { get; set; } = 10;
 
     [Parameter("Losing position Time to Live in minutes", DefaultValue = "3")]
-    public int TimeToLive { get; set; } = 180;
+    public int TimeToLive { get; set; } = 3;
 
-    #region Market Sizing
+        #region Market Sizing
 
-    [Parameter("Order Direction", DefaultValue = OrderDirectionMode.Both, Group = "Orders")]
-    public OrderDirectionMode OrderDirection { get; set; }
+        [Parameter("Order Direction", DefaultValue = OrderDirectionMode.LongOnly, Group = "Orders")]
+        public OrderDirectionMode OrderDirection { get; set; }
 
-    [Parameter("Min Volume (Lots)", DefaultValue = 0.01, MinValue = 0.01, Group = "Orders")]
-    public double MinVolumeLots { get; set; }
+        [Parameter("Min Volume (Lots)", DefaultValue = 0.01, MinValue = 0.01, Group = "Orders")]
+        public double MinVolumeLots { get; set; }
 
-    [Parameter("Max Volume (Lots)", DefaultValue = 0.10, MinValue = 0.01, Group = "Orders")]
-    public double MaxVolumeLots { get; set; }
+        [Parameter("Max Volume (Lots)", DefaultValue = 0.05, MinValue = 0.01, Group = "Orders")]
+        public double MaxVolumeLots { get; set; }
 
-    [Parameter("Margin Percent Divider", DefaultValue = 10.0, MinValue = 0.1, Group = "Orders")]
-    public double MarginPercentDivider { get; set; }
+        [Parameter("Margin Percent Divider", DefaultValue = 10.0, MinValue = 0.1, Group = "Orders")]
+        public double MarginPercentDivider { get; set; }
 
-    [Parameter("Max active long positions", Group = "Orders", DefaultValue = 3, MinValue = 0,
-      Step = 1)]
-    public int MaxLongPositions { get; set; }
+        [Parameter("Max active long positions", Group = "Orders", DefaultValue = 3, MinValue = 0, Step = 1)]
+        public int MaxLongPositions { get; set; }
 
-    [Parameter("Max active short positions", Group = "Orders", DefaultValue = 0, MinValue = 0,
-      Step = 1)]
-    public int MaxShortPositions { get; set; }
+        [Parameter("Max active short positions", Group = "Orders", DefaultValue = 0, MinValue = 0, Step = 1)]
+        public int MaxShortPositions { get; set; }
 
-    #endregion
+        #endregion
 
-    #region Pending Positions
+        #region Pending Positions
 
-    [Parameter("Max Spread Pips", DefaultValue = 2, MinValue = 0, Group = "Pending Positions")]
-    public double MaxSpreadPips { get; set; }
+        // Spread reale su ETHUSD (dati storici M1): ~10 pips fissi (0.10 USD, pip=0.01)
+        [Parameter("Max Spread Pips", DefaultValue = 15, MinValue = 0, Group = "Pending Positions")]
+        public double MaxSpreadPips { get; set; }
 
-    [Parameter("Fixed Offset Pips", DefaultValue = 5, MinValue = 1, Group = "Pending Positions")]
-    public double FixedOffsetPips { get; set; }
+        [Parameter("Fixed Offset Pips", DefaultValue = 3, MinValue = 1, Group = "Pending Positions")]
+        public double FixedOffsetPips { get; set; }
 
-    [Parameter("Limit Range Pips", DefaultValue = 1, MinValue = 0, MaxValue = 200, Group = "Pending Positions")]
-    public double LimitRangePips { get; set; }
+        [Parameter("Limit Range Pips", DefaultValue = 5, MinValue = 0, MaxValue = 200, Group = "Pending Positions")]
+        public double LimitRangePips { get; set; }
 
-    [Parameter("StopLoss Distance Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
-    public double StopLossPips { get; set; }
+        // Con spread 10 pip, il TP netto deve essere > spread per guadagnare.
+        // TP=20 pip → movimento lordo necessario = 30 pip (spread 10 + TP 20).
+        // SL=35 pip → rapporto rischio/rendimento 35:20 compensato dall'alta frequenza.
+        [Parameter("StopLoss Pips", DefaultValue = 35, MinValue = 0, Group = "Pending Positions")]
+        public double StopLossPips { get; set; }
 
-    [Parameter("TakeProfit Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
-    public double TakeProfitPips { get; set; }
+        [Parameter("TakeProfit Pips", DefaultValue = 20, MinValue = 0, Group = "Pending Positions")]
+        public double TakeProfitPips { get; set; }
 
-    [Parameter("Trailing Trigger Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
-    public double TrailingTriggerPips { get; set; }
+        [Parameter("Trailing Trigger Pips", DefaultValue = 15, MinValue = 0, Group = "Pending Positions")]
+        public double TrailingTriggerPips { get; set; }
 
-    [Parameter("Trailing Distance Margin Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
-    public double TrailingDistancePips { get; set; }
+        [Parameter("Trailing Distance Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
+        public double TrailingDistancePips { get; set; }
 
-    [Parameter("Distance Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
-    public double MinDistancePips { get; set; }
+        [Parameter("Min Distance Pips", DefaultValue = 25, MinValue = 0, Group = "Pending Positions")]
+        public double MinDistancePips { get; set; }
 
-    [Parameter("Profit Distance Pips", DefaultValue = 8, MinValue = 0, Group = "Pending Positions")]
-    public double ProfitDistancePips { get; set; }
+        [Parameter("Profit Distance Pips", DefaultValue = 12, MinValue = 0, Group = "Pending Positions")]
+        public double ProfitDistancePips { get; set; }
 
     [Parameter("MinTickVolume", DefaultValue = 30, MinValue = 0, Group = "Pending Positions")]
     public int MinTickVolume { get; set; }
+
+    [Parameter("Min Bar Range Pips", DefaultValue = 2.0, MinValue = 0, Group = "Pending Positions")]
+    public double MinBarRangePips { get; set; }
+
+    [Parameter("Allow Hedging", DefaultValue = false, Group = "Orders")]
+    public bool AllowHedging { get; set; }
+
+    [Parameter("Add To Losing Positions", DefaultValue = false, Group = "Orders")]
+    public bool AddToLosingPositions { get; set; }
     #endregion
 
-    string Label => $"{PositionPrefix}-{PositionSuffix}";
+        #endregion
 
-    private PendingOrder _shortOrder = null;
-    private PendingOrder _longOrder = null;
-    private Bar _currentBar;
-    
-    private Position[] ShortPositions
-    {
-      get
-      {
-        return Positions.Where(p =>
-            p.Label == Label && p.SymbolName == SymbolName &&
-            p.TradeType == TradeType.Sell)
-          .ToArray();
-      }
-    }
+        #region Trend Filter (EMA + RSI)
 
-    private Position[] LongPositions
-    {
-      get
-      {
-        return Positions.Where(p =>
-            p.Label == Label && p.SymbolName == SymbolName &&
-            p.TradeType == TradeType.Buy)
-          .ToArray();
-      }
-    }
+        [Parameter("Enable Trend Filter", DefaultValue = true, Group = "Trend Filter")]
+        public bool EnableTrendFilter { get; set; }
 
     private Position FindNearestPosition(TradeType? operation)
     {
       var nearPosition = operation switch
       {
-        TradeType.Buy => this.LongPositions.MinBy(p => Math.Abs(p.NetProfit / Symbol.PipValue)),
-        TradeType.Sell => this.ShortPositions.MinBy(p => Math.Abs(p.NetProfit / Symbol.PipValue)),
+        TradeType.Buy => this.LongPositions.MinBy(p => Math.Abs(p.Pips)),
+        TradeType.Sell => this.ShortPositions.MinBy(p => Math.Abs(p.Pips)),
         _ => null
       };
       return nearPosition;
     }
 
-    private double GetBuyPrice
-    {
-      [MethodImpl(MethodImplOptions.AggressiveInlining)]
-      get => Symbol.Ask + FixedOffsetPips * Symbol.PipSize;
-    }
+        [Parameter("EMA Slow Period", DefaultValue = 21, MinValue = 5, Group = "Trend Filter")]
+        public int EmaSlowPeriod { get; set; }
 
+        [Parameter("RSI Period", DefaultValue = 14, MinValue = 2, Group = "Trend Filter")]
+        public int RsiPeriod { get; set; }
 
-    private double GetSellPrice
-    {
-      [MethodImpl(MethodImplOptions.AggressiveInlining)]
-      get => Symbol.Bid - FixedOffsetPips * Symbol.PipSize;
-    }
+        // Non comprare se RSI troppo alto (overbought) o troppo basso (momentum assente)
+        [Parameter("RSI Min Level (Long entry)", DefaultValue = 40, MinValue = 1, MaxValue = 99, Group = "Trend Filter")]
+        public double RsiMinLevel { get; set; }
 
-    protected override void OnStart()
-    {
-      base.OnStart();
-      Positions.Opened += args => SearchForPendingOrders();
+        [Parameter("RSI Max Level (Long entry)", DefaultValue = 68, MinValue = 1, MaxValue = 99, Group = "Trend Filter")]
+        public double RsiMaxLevel { get; set; }
 
-      Timer.Start(TimeSpan.FromSeconds(TimerInterval));
-    }
+        #endregion
 
-    protected override void OnTimer()
-    {
-      base.OnTimer();
-      CloseLoosingPositions();
-      MoveOrders();
-    }
+        string Label => $"{PositionPrefix}-{PositionSuffix}";
 
-    protected override void OnTick()
-    {
-      EvaluateTrailingStop();
-    }
+        private PendingOrder _shortOrder = null;
+        private PendingOrder _longOrder = null;
+        private Bar _currentBar;
 
-    protected override void OnBar() 
-    {
-      if (IsFridayCloseTimeReached())
-        CloseFridayPositions();
+        private ExponentialMovingAverage _emaFast;
+        private ExponentialMovingAverage _emaSlow;
+        private RelativeStrengthIndex _rsi;
 
-      _currentBar = Bars.Last(1);
+        private Position[] ShortPositions =>
+            Positions.Where(p => p.Label == Label && p.SymbolName == SymbolName && p.TradeType == TradeType.Sell).ToArray();
 
-      CreatePendingOrders(LongPositions.Length < MaxLongPositions, ShortPositions.Length < MaxShortPositions);
-    }
+        private Position[] LongPositions =>
+            Positions.Where(p => p.Label == Label && p.SymbolName == SymbolName && p.TradeType == TradeType.Buy).ToArray();
 
-    private void CloseLoosingPositions()
-    {
-      foreach (var position in Positions)
-      {
-        if (position.SymbolName != SymbolName || position.Label != Label || position.NetProfit > 0) continue;
+        private bool HasLosingPosition(TradeType tradeType)
+        {
+            return Positions.Any(p => p.SymbolName == SymbolName && p.Label == Label && p.TradeType == tradeType && p.NetProfit < 0);
+        }
 
-        if (position.EntryTime.AddMinutes(TimeToLive) < Server.Time)
-          position.Close();
-      }
-    }
+        private bool IsFarEnoughFromExistingEntries(TradeType tradeType, double minDistancePips)
+        {
+            var sameSide = Positions
+                .Where(p => p.SymbolName == SymbolName && p.Label == Label && p.TradeType == tradeType)
+                .ToArray();
 
     private void EvaluateTrailingStop()
     {
@@ -195,66 +173,61 @@ namespace cAlgo.Robots
       {
         if (position.SymbolName != SymbolName || position.Label != Label) continue;
         if (position.HasTrailingStop) continue;
-        if (position.NetProfit < 0 || position.NetProfit < TrailingTriggerPips * Symbol.PipValue) continue;
+        if (position.Pips < TrailingTriggerPips) continue;
 
-        var price = position.TradeType switch
+            var referencePrice = tradeType == TradeType.Buy ? Symbol.Ask : Symbol.Bid;
+            var nearestDistance = sameSide.Min(p => Math.Abs(referencePrice - p.EntryPrice) / Symbol.PipSize);
+            return nearestDistance >= minDistancePips;
+        }
+
+        private double GetBuyPrice
         {
-          TradeType.Buy => Symbol.Bid - TrailingDistancePips * Symbol.PipValue,
-          TradeType.Sell => Symbol.Ask + TrailingDistancePips * Symbol.PipValue,
+          TradeType.Buy => Symbol.Bid - TrailingDistancePips * Symbol.PipSize,
+          TradeType.Sell => Symbol.Ask + TrailingDistancePips * Symbol.PipSize,
           _ => 0d
         };
 
-        position.ModifyStopLossPrice(price);
-        position.ModifyTrailingStop(true);
-        position.ModifyTakeProfitPips(null);
-      }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void MoveOrders()
-    {
-      if (_longOrder != null)
-      {
-        var profitShortPosition = ShortPositions.Any(p => p.NetProfit > 0);
-        if (profitShortPosition)
+        private double GetSellPrice
         {
-          _longOrder.Cancel();
-          _longOrder = null;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Symbol.Bid - FixedOffsetPips * Symbol.PipSize;
         }
-        else
-        {
-          _longOrder.ModifyTargetPrice(GetBuyPrice);
-        }
-      }
 
-      if (_shortOrder != null)
-      {
-        var profitLongPosition = LongPositions.Any(p => p.NetProfit > 0);
-        if (profitLongPosition)
+        protected override void OnStart()
         {
-          _shortOrder.Cancel();
-          _shortOrder = null;
+            base.OnStart();
+
+            _emaFast = Indicators.ExponentialMovingAverage(Bars.ClosePrices, EmaFastPeriod);
+            _emaSlow = Indicators.ExponentialMovingAverage(Bars.ClosePrices, EmaSlowPeriod);
+            _rsi     = Indicators.RelativeStrengthIndex(Bars.ClosePrices, RsiPeriod);
+
+            Positions.Opened += args => SearchForPendingOrders();
+            Timer.Start(TimeSpan.FromSeconds(TimerInterval));
+
+            Print($"HFEA ETH-HFT avviato su {SymbolName} | TrendFilter={EnableTrendFilter}");
         }
-        else
+
+        protected override void OnTimer()
         {
-          _shortOrder.ModifyTargetPrice(GetSellPrice);
+            base.OnTimer();
+            CloseLoosingPositions();
+            MoveOrders();
         }
-      }
-    }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void SearchForPendingOrders()
-    {
-      _longOrder = null;
-      _longOrder = PendingOrders.FirstOrDefault(i => i.SymbolName == SymbolName &&
-                                                     i.TradeType == TradeType.Buy &&
-                                                     i.Label == Label);
+        protected override void OnTick()
+        {
+            EvaluateTrailingStop();
+        }
 
-      _shortOrder = null;
-      _shortOrder = PendingOrders.FirstOrDefault(i => i.SymbolName == SymbolName &&
-                                                      i.TradeType == TradeType.Sell &&
-                                                      i.Label == Label);
-    }
+        protected override void OnBar()
+        {
+            if (IsFridayCloseTimeReached())
+            {
+                CloseFridayPositions();
+                return;
+            }
+
+            _currentBar = Bars.Last(1);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void CreatePendingOrders(bool canGoLong, bool canGoShort)
@@ -262,6 +235,28 @@ namespace cAlgo.Robots
       SearchForPendingOrders();
       if (!IsWithinTradingWindow()) return;
       if (_currentBar.TickVolume < MinTickVolume) return;
+      if ((_currentBar.High - _currentBar.Low) / Symbol.PipSize < MinBarRangePips) return;
+      if (OrderDirection == OrderDirectionMode.LongOnly)
+        canGoShort = false;
+      else if (OrderDirection == OrderDirectionMode.ShortOnly)
+        canGoLong = false;
+
+      // Optional anti-chop constraints.
+      if (!AllowHedging)
+      {
+        if (LongPositions.Any())
+          canGoShort = false;
+        if (ShortPositions.Any())
+          canGoLong = false;
+      }
+
+      if (!AddToLosingPositions)
+      {
+        if (LongPositions.Any(p => p.NetProfit < 0))
+          canGoLong = false;
+        if (ShortPositions.Any(p => p.NetProfit < 0))
+          canGoShort = false;
+      }
       
       var spreadPips = (Symbol.Ask - Symbol.Bid) / Symbol.PipSize;
       if (spreadPips > MaxSpreadPips)
@@ -270,106 +265,218 @@ namespace cAlgo.Robots
         return;
       }
 
-
-      
-      var volumeInUnits = GetDynamicVolumeInUnits();
-
-      if (canGoLong && _longOrder is null)
-      {
-        // Vado long solo se non ho posizioni short in profit  
-        //var canopen = !ShortPositions.Any(p => p.NetProfit > 0);// && LongPositions.Any(p => p.NetProfit > 0);
-
-        var pos = FindNearestPosition(TradeType.Buy);
-        if (pos is { NetProfit: > 0, HasTrailingStop: true } && Math.Abs(pos.Pips) > ProfitDistancePips)
-        {
-          ExecuteMarketRangeOrder(TradeType.Buy, SymbolName, volumeInUnits, LimitRangePips, 
-            GetBuyPrice, Label, StopLossPips == 0 ? null : StopLossPips, TakeProfitPips);
+            CreatePendingOrders(canLong, canShort);
         }
 
-        if (pos == null || Math.Abs(pos.Pips) > MinDistancePips)
-          PlaceStopLimitOrderAsync(TradeType.Buy, SymbolName, volumeInUnits, GetBuyPrice, LimitRangePips, Label,
-            StopLossPips == 0 ? null : StopLossPips, TakeProfitPips, null, null, null, false, r =>
-            {
-              if (r.IsSuccessful)
-                _longOrder = r.PendingOrder;
-              else
-                Print($"Error placing LONG StopLimitOrder : {r.Error.ToString()}");
-            });
-      }
-
-      if (canGoShort && _shortOrder is null)
-      {
-        // Vado short solo se non ho posizioni long in profit 
-        // var canOpen = !LongPositions.Any(p => p.NetProfit > 0) && !ShortPositions.Any(p => p.NetProfit < 0);
-
-        var pos = FindNearestPosition(TradeType.Sell);
-        if (pos is { NetProfit: > 0, HasTrailingStop: true } && Math.Abs(pos.Pips) > ProfitDistancePips)
+        private void CloseLoosingPositions()
         {
-          ExecuteMarketRangeOrder(TradeType.Sell, SymbolName, volumeInUnits, LimitRangePips, 
-            GetSellPrice, Label, StopLossPips == 0 ? null : StopLossPips, TakeProfitPips);
+            foreach (var position in Positions.ToArray())
+            {
+                if (position.SymbolName != SymbolName || position.Label != Label || position.NetProfit > 0) continue;
+                if (position.EntryTime.AddMinutes(TimeToLive) < Server.Time)
+                {
+                    Print($"TTL scaduto – chiudo posizione {position.Id} ({position.TradeType}) P&L={position.NetProfit:F2}");
+                    position.Close();
+                }
+            }
         }
 
-        if (pos == null || Math.Abs(pos.Pips) > MinDistancePips)
-          PlaceStopLimitOrderAsync(TradeType.Sell, SymbolName, volumeInUnits, GetSellPrice, LimitRangePips, Label,
-            StopLossPips == 0 ? null : StopLossPips, TakeProfitPips, null, null, null, false, r =>
+        private void EvaluateTrailingStop()
+        {
+            foreach (var position in Positions)
             {
-              if (r.IsSuccessful)
-                _shortOrder = r.PendingOrder;
-              else
-                Print($"Error placing SHORT StopLimitOrder : {r.Error.ToString()}");
-            });
-      }
-    }
+                if (position.SymbolName != SymbolName || position.Label != Label) continue;
+                if (position.HasTrailingStop) continue;
+                if (position.NetProfit < 0 || position.Pips < TrailingTriggerPips) continue;
 
+                var price = position.TradeType switch
+                {
+                    TradeType.Buy  => Symbol.Bid - TrailingDistancePips * Symbol.PipSize,
+                    TradeType.Sell => Symbol.Ask + TrailingDistancePips * Symbol.PipSize,
+                    _              => 0d
+                };
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private double GetDynamicVolumeInUnits()
-    {
-      var freeMarginPercent = Account.Equity > 0 ? (Account.FreeMargin / Account.Equity) * 100.0 : 0.0;
+                position.ModifyStopLossPrice(price);
+                position.ModifyTrailingStop(true);
+            }
+        }
 
-      var normalized = freeMarginPercent / MarginPercentDivider;
-      if (normalized < 0)
-        normalized = 0;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void MoveOrders()
+        {
+            if (_longOrder != null)
+            {
+                if (ShortPositions.Any(p => p.NetProfit > 0))
+                {
+                    _longOrder.Cancel();
+                    _longOrder = null;
+                }
+                else
+                {
+                    // Evita di inseguire il prezzo continuamente: su M1 tende a comprare i massimi locali.
+                }
+            }
 
-      if (normalized > 1)
-        normalized = 1;
+            if (_shortOrder != null)
+            {
+                if (LongPositions.Any(p => p.NetProfit > 0))
+                {
+                    _shortOrder.Cancel();
+                    _shortOrder = null;
+                }
+                else
+                {
+                    // Evita di inseguire il prezzo continuamente: su M1 tende a vendere i minimi locali.
+                }
+            }
+        }
 
-      var lots = MinVolumeLots + (MaxVolumeLots - MinVolumeLots) * normalized;
-      var volumeInUnits = Symbol.QuantityToVolumeInUnits(lots);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void SearchForPendingOrders()
+        {
+            _longOrder  = PendingOrders.FirstOrDefault(i => i.SymbolName == SymbolName && i.TradeType == TradeType.Buy  && i.Label == Label);
+            _shortOrder = PendingOrders.FirstOrDefault(i => i.SymbolName == SymbolName && i.TradeType == TradeType.Sell && i.Label == Label);
+        }
 
-      return Symbol.NormalizeVolumeInUnits(volumeInUnits, RoundingMode.Down);
-    }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void CreatePendingOrders(bool canGoLong, bool canGoShort)
+        {
+            SearchForPendingOrders();
+            if (!IsWithinTradingWindow()) return;
+            if (_currentBar.TickVolume < MinTickVolume) return;
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool IsWithinTradingWindow()
-    {
-      var now = Server.Time.TimeOfDay;
-      var start = TimeSpan.Parse(TradingStartTime);
-      var end = TimeSpan.Parse(TradingEndTime);
+            var spreadPips = (Symbol.Ask - Symbol.Bid) / Symbol.PipSize;
+            if (spreadPips > MaxSpreadPips)
+            {
+                Print($"Spread alto: {spreadPips:F1} pips – skip");
+                return;
+            }
 
-      if (start <= end)
-        return now >= start && now < end;
+            // Se TP non copre spread + buffer minimo, il sistema parte con edge negativo.
+            if (TakeProfitPips <= spreadPips + 1.0)
+            {
+                Print($"TP troppo basso per spread attuale: TP={TakeProfitPips:F1} spread={spreadPips:F1} – skip");
+                return;
+            }
 
-      return now >= start || now < end;
-    }
+            var volumeInUnits = GetDynamicVolumeInUnits();
 
-    private bool IsFridayCloseTimeReached()
-    {
-      if (Server.Time.DayOfWeek != DayOfWeek.Friday)
-        return false;
+            if (canGoLong && _longOrder is null)
+            {
+                if (EnableTrendFilter && !IsBullishSetup())
+                {
+                    Print($"Trend filter: no long | EMAf={_emaFast.Result.Last(0):F2} EMAs={_emaSlow.Result.Last(0):F2} RSI={_rsi.Result.Last(0):F1}");
+                }
+                else
+                {
+                    if (HasLosingPosition(TradeType.Buy))
+                    {
+                        Print("Skip long: esiste gia una posizione long in perdita.");
+                    }
+                    else if (IsFarEnoughFromExistingEntries(TradeType.Buy, MinDistancePips))
+                    {
+                        PlaceStopLimitOrderAsync(TradeType.Buy, SymbolName, volumeInUnits, GetBuyPrice, LimitRangePips, Label,
+                            StopLossPips == 0 ? null : StopLossPips, TakeProfitPips, null, null, null, false, r =>
+                            {
+                                if (r.IsSuccessful)
+                                    _longOrder = r.PendingOrder;
+                                else
+                                    Print($"Errore ordine LONG: {r.Error}");
+                            });
+                    }
+                    else
+                    {
+                        Print("Skip long: distanza minima da entry esistente non raggiunta.");
+                    }
+                }
+            }
 
-      var now = Server.Time.TimeOfDay;
-      var fridayClose = TimeSpan.Parse(FridayCloseTime);
+            if (canGoShort && _shortOrder is null)
+            {
+                if (EnableTrendFilter && !IsBearishSetup())
+                {
+                    Print($"Trend filter: no short | EMAf={_emaFast.Result.Last(0):F2} EMAs={_emaSlow.Result.Last(0):F2} RSI={_rsi.Result.Last(0):F1}");
+                }
+                else
+                {
+                    if (HasLosingPosition(TradeType.Sell))
+                    {
+                        Print("Skip short: esiste gia una posizione short in perdita.");
+                    }
+                    else if (IsFarEnoughFromExistingEntries(TradeType.Sell, MinDistancePips))
+                    {
+                        PlaceStopLimitOrderAsync(TradeType.Sell, SymbolName, volumeInUnits, GetSellPrice, LimitRangePips, Label,
+                            StopLossPips == 0 ? null : StopLossPips, TakeProfitPips, null, null, null, false, r =>
+                            {
+                                if (r.IsSuccessful)
+                                    _shortOrder = r.PendingOrder;
+                                else
+                                    Print($"Errore ordine SHORT: {r.Error}");
+                            });
+                    }
+                    else
+                    {
+                        Print("Skip short: distanza minima da entry esistente non raggiunta.");
+                    }
+                }
+            }
+        }
 
-      return now >= fridayClose;
-    }
+        /// <summary>
+        /// Setup rialzista: EMA veloce sopra EMA lenta + RSI in zona momentum (non overbought).
+        /// </summary>
+        private bool IsBullishSetup()
+        {
+            var emaFastVal = _emaFast.Result.Last(0);
+            var emaSlowVal = _emaSlow.Result.Last(0);
+            var rsiVal     = _rsi.Result.Last(0);
+
+            return emaFastVal > emaSlowVal
+                   && rsiVal >= RsiMinLevel
+                   && rsiVal <= RsiMaxLevel;
+        }
+
+        private bool IsBearishSetup()
+        {
+            var emaFastVal = _emaFast.Result.Last(0);
+            var emaSlowVal = _emaSlow.Result.Last(0);
+            var rsiVal     = _rsi.Result.Last(0);
+
+            return emaFastVal < emaSlowVal
+                   && rsiVal >= (100.0 - RsiMaxLevel)
+                   && rsiVal <= (100.0 - RsiMinLevel);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private double GetDynamicVolumeInUnits()
+        {
+            var freeMarginPercent = Account.Equity > 0 ? (Account.FreeMargin / Account.Equity) * 100.0 : 0.0;
+            var normalized = Math.Clamp(freeMarginPercent / MarginPercentDivider, 0.0, 1.0);
+            var lots = MinVolumeLots + (MaxVolumeLots - MinVolumeLots) * normalized;
+            return Symbol.NormalizeVolumeInUnits(Symbol.QuantityToVolumeInUnits(lots), RoundingMode.Down);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool IsWithinTradingWindow()
+        {
+            var now   = Server.Time.TimeOfDay;
+            var start = TimeSpan.Parse(TradingStartTime);
+            var end   = TimeSpan.Parse(TradingEndTime);
+
+            if (start <= end)
+                return now >= start && now < end;
+
+            return now >= start || now < end;
+        }
 
     private void CloseFridayPositions()
     {
-      // foreach (var position in Positions.Where(p => p.SymbolName == SymbolName && p.Label == Label).ToArray())
-      //     ClosePosition(position);
+      foreach (var position in Positions.Where(p => p.SymbolName == SymbolName && p.Label == Label).ToArray())
+        ClosePosition(position);
+
+      foreach (var pending in PendingOrders.Where(p => p.SymbolName == SymbolName && p.Label == Label).ToArray())
+        CancelPendingOrder(pending);
 
       Print("Venerdì: posizioni chiuse e pending cancellate.");
     }
-  }
 }

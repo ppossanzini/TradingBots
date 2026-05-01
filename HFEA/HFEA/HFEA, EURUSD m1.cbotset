@@ -1,0 +1,37 @@
+﻿{
+  "Chart": {
+    "Symbol": "EURUSD",
+    "Period": "m1"
+  },
+  "Parameters": {
+    "PositionSuffix": "Spike Catcher",
+    "PositionPrefix": "HFA",
+    "TradingStartTime": "7:00",
+    "TradingEndTime": "20:00",
+    "FridayCloseTime": "17:00",
+    "TimerInterval": 10,
+    "TimeToLive": 10,
+    "OrderDirection": 1,
+    "MinVolumeLots": 0.01,
+    "MaxVolumeLots": 0.01,
+    "MarginPercentDivider": 10.0,
+    "MaxLongPositions": 1,
+    "MaxShortPositions": 0,
+    "MaxSpreadPips": 1.6,
+    "FixedOffsetPips": 1.0,
+    "LimitRangePips": 2.0,
+    "StopLossPips": 12.0,
+    "TakeProfitPips": 18.0,
+    "TrailingTriggerPips": 10.0,
+    "TrailingDistancePips": 6.0,
+    "MinDistancePips": 30.0,
+    "ProfitDistancePips": 15.0,
+    "MinTickVolume": 20,
+    "EnableTrendFilter": true,
+    "EmaFastPeriod": 8,
+    "EmaSlowPeriod": 21,
+    "RsiPeriod": 14,
+    "RsiMinLevel": 44.0,
+    "RsiMaxLevel": 64.0
+  }
+}

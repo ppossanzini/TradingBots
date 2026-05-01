@@ -6,6 +6,8 @@
   "Parameters": {
     "Label": "SpikeCatcher-HFT",
     "PositionPrefix": "Spike Catcher",
+    "EnableFridayClose": true,
+    "EnableTradingWindow": true,
     "TradingStartTime": "07:00",
     "TradingEndTime": "17:00",
     "FridayCloseTime": "16:30",
@@ -15,6 +17,7 @@
     "MarginPercentDivider": 15.0,
     "MaxLongPositions": 5,
     "MaxShortPositions": 5,
+    "EvaluatingTimeFrame": "Hour",
     "EvaluationgCandles": 60,
     "EvaluatingRange": 15,
     "MaxSpreadPips": 1.0,
